@@ -184,7 +184,7 @@ function renderResults(analysis) {
     ),
   ].join('')
 
-  elements.themeTitle.textContent = `${analysis.artworkTitle || 'Sans titre'} — ${analysis.theme.label}`
+  elements.themeTitle.textContent = analysis.artworkTitle || analysis.theme.label
   elements.themeCommentary.textContent = analysis.commentary
 
   elements.movesTable.innerHTML = analysis.rows.map((row) => {
@@ -268,7 +268,7 @@ async function startAnalysis() {
     renderResults(currentAnalysis)
     elements.canvasPlaceholder.hidden = true
     elements.downloadButton.disabled = false
-    elements.statusMessage.textContent = 'Analyse terminée. La même partie produira toujours la même peinture.'
+    elements.statusMessage.textContent = 'Analyse terminée. La même partie produira toujours la même œuvre.'
   } catch (error) {
     if (error?.name === 'AbortError') {
       elements.statusMessage.textContent = 'Analyse interrompue.'
@@ -316,10 +316,9 @@ elements.stopButton.addEventListener('click', () => {
 })
 
 elements.downloadButton.addEventListener('click', () => {
-  const white = currentAnalysis?.headers.White || 'blancs'
-  const black = currentAnalysis?.headers.Black || 'noirs'
-  const clean = `${white}-${black}`.toLowerCase().replace(/[^a-z0-9]+/g, '-')
-  downloadPainting(elements.canvas, `chess-paint-${clean}.png`)
+  const title = currentAnalysis?.artworkTitle || `${currentAnalysis?.headers.White || 'blancs'}-${currentAnalysis?.headers.Black || 'noirs'}`
+  const clean = String(title).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+  downloadPainting(elements.canvas, `chess-paint-${clean || 'oeuvre'}.png`)
 })
 
 elements.pgnFile.addEventListener('change', async () => {

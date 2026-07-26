@@ -1,13 +1,13 @@
 # Chess Paint
 
-Version actuelle : **0.4.0**
+Version actuelle : **1.0.0**
 
-**Chess Paint** transforme une partie d’échecs au format PGN en peinture procédurale.
+**Chess Paint** transforme une partie d’échecs au format PGN en une œuvre picturale procédurale, pensée comme une scène narrative plutôt que comme un simple diagramme de coups.
 
 - Stockfish analyse chaque position directement dans le navigateur.
 - Les coups sont classés : brillant, meilleur, excellent, bon, imprécision, erreur ou gaffe.
 - Un niveau indicatif est calculé pour chaque joueur.
-- Les échecs, captures, roques, promotions et sacrifices potentiels influencent la peinture.
+- Les échecs, captures, roques, promotions et sacrifices potentiels influencent la dramaturgie, le décor et la composition.
 - Aucune IA générative ne produit l’image : le dessin vient uniquement d’un algorithme Canvas.
 - Le PGN et les résultats ne sont envoyés vers aucun serveur.
 - L’application peut être installée sur Android ou iPhone comme une PWA.
