@@ -163,6 +163,11 @@ function renderResults(analysis) {
       black ? `${black.averageLoss} cp de perte moyenne · ${black.bestRate} % de coups précis` : 'Estimation indisponible',
     ),
     createSummaryCard(
+      'Ouverture reconnue',
+      analysis.opening?.label || 'Ouverture libre',
+      analysis.opening?.family ? `Famille : ${analysis.opening.family}` : 'Aucune famille reconnue',
+    ),
+    createSummaryCard(
       'Évaluation finale',
       formatEvaluation(lastEvaluation),
       `${analysis.rows.length} demi-coups analysés · résultat ${analysis.result}`,

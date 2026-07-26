@@ -19,10 +19,32 @@ const QUALITY_LABELS = {
   blunder: 'Gaffe',
 }
 
+const OPENING_BOOK = [
+  { id: 'ruy-lopez', label: 'Partie espagnole', family: 'Jeux ouverts', pattern: ['e4', 'e5', 'Nf3', 'Nc6', 'Bb5'], symbol: 'arch' },
+  { id: 'italian', label: 'Partie italienne', family: 'Jeux ouverts', pattern: ['e4', 'e5', 'Nf3', 'Nc6', 'Bc4'], symbol: 'laurel' },
+  { id: 'scotch', label: 'Partie écossaise', family: 'Jeux ouverts', pattern: ['e4', 'e5', 'Nf3', 'Nc6', 'd4'], symbol: 'crosswind' },
+  { id: 'petrov', label: 'Défense Petrov', family: 'Jeux ouverts', pattern: ['e4', 'e5', 'Nf3', 'Nf6'], symbol: 'mirror' },
+  { id: 'sicilian', label: 'Défense sicilienne', family: 'Jeux semi-ouverts', pattern: ['e4', 'c5'], symbol: 'wave' },
+  { id: 'french', label: 'Défense française', family: 'Jeux semi-ouverts', pattern: ['e4', 'e6'], symbol: 'fan' },
+  { id: 'caro-kann', label: 'Défense Caro-Kann', family: 'Jeux semi-ouverts', pattern: ['e4', 'c6'], symbol: 'gate' },
+  { id: 'scandinavian', label: 'Défense scandinave', family: 'Jeux semi-ouverts', pattern: ['e4', 'd5'], symbol: 'spear' },
+  { id: 'kings-gambit', label: 'Gambit du roi', family: 'Jeux ouverts', pattern: ['e4', 'e5', 'f4'], symbol: 'flame' },
+  { id: 'queens-gambit', label: 'Gambit dame', family: 'Jeux fermés', pattern: ['d4', 'd5', 'c4'], symbol: 'orb' },
+  { id: 'london', label: 'Système de Londres', family: 'Jeux fermés', pattern: ['d4', 'd5', 'Nf3', 'Nf6', 'Bf4'], symbol: 'column' },
+  { id: 'english', label: 'Ouverture anglaise', family: 'Flanc', pattern: ['c4'], symbol: 'crescent' },
+  { id: 'reti', label: 'Ouverture Réti', family: 'Flanc', pattern: ['Nf3', 'd5', 'g3'], symbol: 'feather' },
+  { id: 'bird', label: 'Ouverture Bird', family: 'Flanc', pattern: ['f4'], symbol: 'wing' },
+  { id: 'nimzo', label: 'Défense Nimzo-indienne', family: 'Indiennes', pattern: ['d4', 'Nf6', 'c4', 'e6', 'Nc3', 'Bb4'], symbol: 'pillar' },
+  { id: 'kings-indian', label: 'Défense est-indienne', family: 'Indiennes', pattern: ['d4', 'Nf6', 'c4', 'g6', 'Nc3', 'Bg7', 'e4', 'd6'], symbol: 'spire' },
+  { id: 'queens-indian', label: 'Défense ouest-indienne', family: 'Indiennes', pattern: ['d4', 'Nf6', 'c4', 'e6', 'Nf3', 'b6'], symbol: 'mesh' },
+  { id: 'catalan', label: 'Ouverture catalane', family: 'Jeux fermés', pattern: ['d4', 'Nf6', 'c4', 'e6', 'g3'], symbol: 'harp' },
+  { id: 'larsen', label: 'Ouverture Larsen', family: 'Flanc', pattern: ['b3'], symbol: 'kite' },
+]
+
 export function normalizePgn(pgn) {
   const cleaned = String(pgn ?? '')
-    .replace(/[\u200B-\u200D\u2060\uFEFF]/g, '')
-    .replace(/[\u00A0\u202F]/g, ' ')
+    .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    .replace(/\u00A0/g, ' ')
     .replace(/\r\n?/g, '\n')
     .replace(/[“”]/g, '"')
     .replace(/[’]/g, "'")
@@ -44,8 +66,6 @@ export function normalizePgn(pgn) {
     }
   }
 
-  // Les retours à la ligne, tabulations et espaces multiples du texte des coups
-  // deviennent de simples séparateurs. Cela rend le collage mobile beaucoup plus robuste.
   const moveText = moveLines.join(' ').replace(/\s+/g, ' ').trim()
 
   return [headerLines.join('\n'), moveText]
@@ -175,37 +195,114 @@ function estimatePlayerLevel(rows, color) {
   }
 }
 
-function determineTheme(rows, moves) {
+function cleanSanMove(san) {
+  return san.replace(/[+#?!]/g, '')
+}
+
+function detectOpening(parsed) {
+  if (parsed.headers.Opening) {
+    return {
+      id: 'header-opening',
+      label: parsed.headers.Opening,
+      family: parsed.headers.ECO || 'Ouverture renseignée',
+      symbol: 'orb',
+    }
+  }
+
+  const sanMoves = parsed.moves.map((move) => cleanSanMove(move.san))
+  const lowerSan = sanMoves.map((move) => move.toLowerCase())
+
+  for (const opening of OPENING_BOOK) {
+    const matches = opening.pattern.every((move, index) => lowerSan[index] === move.toLowerCase())
+    if (matches) return opening
+  }
+
+  if (lowerSan[0] === 'e4' && lowerSan[1] === 'e5') {
+    return { id: 'open-game', label: 'Jeu ouvert', family: 'Ouverture', symbol: 'arch' }
+  }
+  if (lowerSan[0] === 'd4' && lowerSan[1] === 'd5') {
+    return { id: 'closed-game', label: 'Jeu fermé', family: 'Ouverture', symbol: 'mesh' }
+  }
+  if (lowerSan[0] === 'd4' && lowerSan[1] === 'nf6') {
+    return { id: 'indian-game', label: 'Défense indienne', family: 'Ouverture', symbol: 'spire' }
+  }
+
+  return {
+    id: 'unknown-opening',
+    label: 'Ouverture libre',
+    family: 'Non identifiée',
+    symbol: 'spiral',
+  }
+}
+
+function winnerColor(result) {
+  if (result === '1-0') return 'w'
+  if (result === '0-1') return 'b'
+  return null
+}
+
+function determineTheme(rows, moves, evaluations, result) {
   const checks = moves.filter((move) => move.san.includes('+') || move.san.includes('#')).length
   const captures = moves.filter((move) => move.captured).length
+  const promotions = moves.filter((move) => move.promotion).length
   const severeErrors = rows.filter((row) => ['mistake', 'blunder'].includes(row.quality)).length
   const sacrifices = rows.filter((row) => row.sacrifice).length
   const maxSwing = Math.max(...rows.map((row) => row.cpLoss), 0)
   const finalBoard = new Chess(moves.at(-1).after)
   const material = finalBoard.board().flat().filter(Boolean).length
+  const earlyMoves = moves.slice(0, Math.min(20, moves.length))
+  const earlyCenterPawnMoves = earlyMoves.filter((move) => move.piece === 'p' && /[cdef]/.test(move.from[0])).length
+  const wingMoves = earlyMoves.filter((move) => /[abgh]/.test(move.from[0]) || /[abgh]/.test(move.to[0])).length
+  const quietStructure = checks <= 1 && captures <= 5 && severeErrors <= 1
+  const evalScores = evaluations.map((entry) => entry.scoreWhite)
+  const signChanges = evalScores.reduce((count, score, index, array) => {
+    if (index === 0) return 0
+    const previous = array[index - 1]
+    if (Math.abs(score) < 120 || Math.abs(previous) < 120) return count
+    return Math.sign(score) !== Math.sign(previous) ? count + 1 : count
+  }, 0)
+  const winner = winnerColor(result)
+  const bestForBlack = Math.max(...evalScores)
+  const bestForWhite = Math.min(...evalScores)
+  const comeback = (winner === 'w' && bestForWhite < -220) || (winner === 'b' && bestForBlack > 220)
 
+  if (promotions >= 1) {
+    return { id: 'promotion', label: 'Ascension et métamorphose', description: 'Le récit s’étire vers la transformation : la matière grimpe et change de nature.' }
+  }
   if (rows.some((row) => row.motifs.includes('mat')) && checks >= 4) {
-    return { id: 'king-storm', label: 'Tempête sur le roi', description: 'Les lignes convergent vers le roi et la toile se referme autour de lui.' }
+    return { id: 'king-storm', label: 'Tempête sur le roi', description: 'Les lignes se resserrent, frappent le centre nerveux et finissent par l’encercler.' }
   }
   if (sacrifices >= 1 && checks >= 2) {
-    return { id: 'sacrifice', label: 'Sacrifice et initiative', description: 'La matière est abandonnée pour accélérer le mouvement et ouvrir les lignes.' }
+    return { id: 'sacrifice', label: 'Sacrifice et initiative', description: 'Une part de matière est livrée pour ouvrir l’espace, accélérer le souffle et tendre la toile.' }
+  }
+  if (comeback || signChanges >= 2) {
+    return { id: 'counterstroke', label: 'Renversement et contre-attaque', description: 'La direction dominante bascule : une force dominée revient, casse le rythme et s’impose à rebours.' }
+  }
+  if (earlyCenterPawnMoves >= 8 && captures >= 4) {
+    return { id: 'center-clash', label: 'Choc au centre', description: 'Le centre de l’échiquier devient la scène première : la toile se construit dans une compression frontale.' }
+  }
+  if (wingMoves >= 8 && checks <= 3) {
+    return { id: 'wing-race', label: 'Course sur les ailes', description: 'Les gestes glissent vers les bords, contournent le cœur de la position et dessinent des trajectoires latérales.' }
   }
   if (severeErrors >= 4 || maxSwing >= 500) {
-    return { id: 'chaos', label: 'Chaos tactique', description: 'La partie change brutalement de direction et laisse des ruptures dans la peinture.' }
+    return { id: 'chaos', label: 'Chaos tactique', description: 'La partie change brutalement de direction et laisse des cassures, des éclats et des reprises soudaines.' }
   }
   if (material <= 10) {
-    return { id: 'endgame', label: 'Finale mécanique', description: 'Peu de pièces subsistent : les gestes deviennent rares, précis et structurés.' }
+    return { id: 'endgame', label: 'Finale mécanique', description: 'Peu de matière subsiste : les gestes deviennent rares, précis, presque architecturaux.' }
   }
   if (captures >= Math.max(8, moves.length * 0.3)) {
-    return { id: 'exchange', label: 'Érosion par les échanges', description: 'Les formes se superposent puis disparaissent au rythme des captures.' }
+    return { id: 'exchange', label: 'Érosion par les échanges', description: 'Les formes se superposent puis s’effacent au rythme des prises successives.' }
+  }
+  if (quietStructure) {
+    return { id: 'fortress', label: 'Forteresse et tension sourde', description: 'La structure résiste longtemps : la surface paraît calme mais chaque ligne contient une pression retenue.' }
   }
   if (checks <= 2 && severeErrors <= 2) {
-    return { id: 'positional', label: 'Construction positionnelle', description: 'La toile progresse par petites tensions, sans explosion immédiate.' }
+    return { id: 'positional', label: 'Construction positionnelle', description: 'La toile progresse par ajustements fins, glissements et compensations patientes.' }
   }
-  return { id: 'duel', label: 'Duel de trajectoires', description: 'Deux logiques visuelles se répondent jusqu’à l’issue de la partie.' }
+  return { id: 'duel', label: 'Duel de trajectoires', description: 'Deux logiques visuelles se répondent et se déforment l’une l’autre jusqu’à l’issue de la partie.' }
 }
 
-function createCommentary(theme, rows, parsed) {
+function createCommentary(theme, rows, parsed, opening) {
   const firstTurningPoint = rows.find((row) => row.cpLoss >= 180)
   const winner = parsed.result === '1-0'
     ? parsed.headers.White || 'Les Blancs'
@@ -213,14 +310,16 @@ function createCommentary(theme, rows, parsed) {
       ? parsed.headers.Black || 'Les Noirs'
       : null
 
-  const parts = [theme.description]
+  const parts = []
+  if (opening?.label) parts.push(`L’œuvre s’ouvre sur ${opening.label.toLowerCase()}${opening.family ? `, dans la famille ${opening.family.toLowerCase()}` : ''}.`)
+  parts.push(theme.description)
   if (firstTurningPoint) {
     parts.push(
       `Le premier grand basculement apparaît au ${firstTurningPoint.moveNumber}${firstTurningPoint.color === 'w' ? 'e' : '…'} coup avec ${firstTurningPoint.san}.`,
     )
   }
-  if (winner) parts.push(`${winner} impose finalement la direction dominante de l’œuvre.`)
-  else if (parsed.result === '1/2-1/2') parts.push('Aucune trajectoire ne parvient à absorber complètement l’autre.')
+  if (winner) parts.push(`${winner} impose finalement la direction dominante de la composition.`)
+  else if (parsed.result === '1/2-1/2') parts.push('Aucune trajectoire ne parvient à absorber complètement l’autre et la toile reste en équilibre.')
 
   return parts.join(' ')
 }
@@ -264,9 +363,10 @@ export async function analyzeGame({ pgn, engine, depth, signal, onProgress }) {
     }
   })
 
-  const theme = determineTheme(rows, parsed.moves)
+  const theme = determineTheme(rows, parsed.moves, evaluations, parsed.result)
   const white = estimatePlayerLevel(rows, 'w')
   const black = estimatePlayerLevel(rows, 'b')
+  const opening = detectOpening(parsed)
 
   return {
     ...parsed,
@@ -274,6 +374,7 @@ export async function analyzeGame({ pgn, engine, depth, signal, onProgress }) {
     evaluations,
     players: { white, black },
     theme,
-    commentary: createCommentary(theme, rows, parsed),
+    opening,
+    commentary: createCommentary(theme, rows, parsed, opening),
   }
 }

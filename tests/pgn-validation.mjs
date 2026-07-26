@@ -38,9 +38,9 @@ Qc7+ Kxa8 28. Qxd7 Rg8 29. Re8+ Rxe8 30. Qxe8+ Kb7 31. Qd7+ Kb8 32. f4 c5 33.
 fxg5 hxg5 34. h4 a5 35. hxg5 Ka8 36. Bf4 a4 37. Qc7 b5 38. Qb8# 1-0`
 
 const chessComParsed = parsePgn(chessComWrappedPgn)
-assert.equal(chessComParsed.halfMoveCount, 75)
+assert.equal(chessComParsed.halfMoveCount, 76)
 assert.equal(chessComParsed.displayedMoveCount, 38)
 assert.equal(chessComParsed.result, '1-0')
 assert.equal(chessComParsed.moves.at(-1).san, 'Qb8#')
 
-console.log('PGN Chess.com sur plusieurs lignes reconnu : 75 demi-coups, résultat 1-0.')
+console.log('PGN Chess.com sur plusieurs lignes reconnu : 76 demi-coups, résultat 1-0.')
