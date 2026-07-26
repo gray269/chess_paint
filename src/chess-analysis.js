@@ -41,6 +41,45 @@ const OPENING_BOOK = [
   { id: 'larsen', label: 'Ouverture Larsen', family: 'Flanc', pattern: ['b3'], symbol: 'kite' },
 ]
 
+const SCENE_WORLDS = [
+  { id: 'mythic-antique', label: 'Antique mythologique', family: 'Antique', motifs: ['temples', 'colonnes', 'héros'], keywords: ['antique', 'mythe', 'temple', 'aube'] },
+  { id: 'romantic-storm', label: 'Romantisme orageux', family: 'Romantique', motifs: ['mer', 'falaises', 'nuages'], keywords: ['orage', 'romance', 'écume', 'horizon'] },
+  { id: 'alpine-calm', label: 'Calme alpin', family: 'Paysage', motifs: ['montagne', 'brume', 'lacs'], keywords: ['montagne', 'brume', 'repos', 'lumière'] },
+  { id: 'maritime-odyssey', label: 'Odyssée maritime', family: 'Maritime', motifs: ['vagues', 'voiles', 'ports'], keywords: ['océan', 'courant', 'voile', 'marée'] },
+  { id: 'desert-epic', label: 'Épopée des sables', family: 'Épique', motifs: ['dunes', 'soleil', 'ruines'], keywords: ['sable', 'mirage', 'soleil', 'poussière'] },
+  { id: 'forest-legend', label: 'Légende sylvestre', family: 'Légendaire', motifs: ['forêt', 'clairières', 'bruissement'], keywords: ['forêt', 'mousse', 'clairière', 'silence'] },
+  { id: 'courtly-renaissance', label: 'Cour renaissante', family: 'Renaissance', motifs: ['jardins', 'terrasses', 'arches'], keywords: ['cour', 'velours', 'balcon', 'jardin'] },
+  { id: 'lunar-dream', label: 'Songe lunaire', family: 'Onirique', motifs: ['lune', 'miroirs d’eau', 'constellations'], keywords: ['lune', 'rêve', 'miroir', 'nocturne'] },
+]
+
+function hashText(text) {
+  let hash = 2166136261
+  for (let index = 0; index < text.length; index += 1) {
+    hash ^= text.charCodeAt(index)
+    hash = Math.imul(hash, 16777619)
+  }
+  return hash >>> 0
+}
+
+function randomGenerator(seed) {
+  let state = seed || 1
+  return () => {
+    state += 0x6d2b79f5
+    let value = state
+    value = Math.imul(value ^ (value >>> 15), value | 1)
+    value ^= value + Math.imul(value ^ (value >>> 7), value | 61)
+    return ((value ^ (value >>> 14)) >>> 0) / 4294967296
+  }
+}
+
+function choose(array, random) {
+  return array[Math.floor(random() * array.length)]
+}
+
+function normalizedHeader(value) {
+  return String(value || '').trim()
+}
+
 export function normalizePgn(pgn) {
   const cleaned = String(pgn ?? '')
     .replace(/[\u200B-\u200D\uFEFF]/g, '')
@@ -302,21 +341,77 @@ function determineTheme(rows, moves, evaluations, result) {
   return { id: 'duel', label: 'Duel de trajectoires', description: 'Deux logiques visuelles se répondent et se déforment l’une l’autre jusqu’à l’issue de la partie.' }
 }
 
-function createCommentary(theme, rows, parsed, opening) {
+function selectSceneWorld(theme, opening, rows, normalizedPgn) {
+  const seed = hashText(`${normalizedPgn}|scene|${theme.id}|${opening.id}`)
+  const random = randomGenerator(seed)
+  const map = {
+    'king-storm': ['romantic-storm', 'maritime-odyssey', 'mythic-antique'],
+    sacrifice: ['mythic-antique', 'desert-epic', 'romantic-storm'],
+    chaos: ['romantic-storm', 'desert-epic', 'forest-legend'],
+    endgame: ['alpine-calm', 'courtly-renaissance', 'lunar-dream'],
+    exchange: ['courtly-renaissance', 'alpine-calm', 'forest-legend'],
+    positional: ['alpine-calm', 'courtly-renaissance', 'lunar-dream'],
+    duel: ['mythic-antique', 'courtly-renaissance', 'forest-legend'],
+    counterstroke: ['maritime-odyssey', 'romantic-storm', 'desert-epic'],
+    'center-clash': ['mythic-antique', 'desert-epic', 'courtly-renaissance'],
+    'wing-race': ['maritime-odyssey', 'alpine-calm', 'lunar-dream'],
+    fortress: ['alpine-calm', 'courtly-renaissance', 'forest-legend'],
+    promotion: ['lunar-dream', 'mythic-antique', 'romantic-storm'],
+  }
+  const candidates = map[theme.id] || SCENE_WORLDS.map((world) => world.id)
+  const weighted = [...candidates, ...SCENE_WORLDS.map((world) => world.id)]
+  const selectedId = choose(weighted, random)
+  return SCENE_WORLDS.find((world) => world.id === selectedId) || SCENE_WORLDS[0]
+}
+
+function generateArtworkTitle({ normalizedPgn, theme, opening, scene, result }) {
+  const seed = hashText(`${normalizedPgn}|title|${theme.id}|${scene.id}`)
+  const random = randomGenerator(seed)
+  const starters = ['La', 'Le', 'Les', 'Ballade de', 'Élégie pour', 'Chronique de', 'Au bord de', 'Sous', 'Par-delà']
+  const nounsByTheme = {
+    'king-storm': ['couronne d’orage', 'siège du roi', 'dernier rempart'],
+    sacrifice: ['don du feu', 'offrande des lignes', 'cœur livré'],
+    chaos: ['cartographie des éclats', 'danse des fractures', 'bruit des cendres'],
+    endgame: ['mécanique du silence', 'fin des leviers', 'géométrie du soir'],
+    exchange: ['poussière des échanges', 'érosion des présences', 'balancier des pertes'],
+    positional: ['patience des pierres', 'atelier des distances', 'mesure des espaces'],
+    duel: ['duel de trajectoires', 'conversation des forces', 'équilibre rompu'],
+    counterstroke: ['retour de la marée', 'contre-chant des lignes', 'retournement du vent'],
+    'center-clash': ['cœur de la mêlée', 'compression du centre', 'forge centrale'],
+    'wing-race': ['course latérale', 'danse des rivages', 'appel des ailes'],
+    fortress: ['forteresse intérieure', 'tension immobile', 'silence des remparts'],
+    promotion: ['ascension de l’étincelle', 'couronnement du pion', 'métamorphose en hauteur'],
+  }
+  const sceneWords = scene.keywords
+  const openingWord = opening.label.replace(/^Défense\s+/i, '').replace(/^Partie\s+/i, '').toLowerCase()
+  const closer = choose(['nocturne', 'horizon', 'brume', 'marée', 'éclaircie', 'vertige'], random)
+  const body = choose(nounsByTheme[theme.id] || nounsByTheme.duel, random)
+  const intro = choose(starters, random)
+  const twist = random() > 0.45 ? ` ${choose(['de', 'dans', 'sous', 'vers'], random)} ${choose(sceneWords, random)}` : ''
+  const openingHint = random() > 0.62 ? ` · ${openingWord}` : ''
+  const resultHint = result === '1/2-1/2'
+    ? ' — équilibre'
+    : random() > 0.7
+      ? ` — ${choose([closer, choose(sceneWords, random)], random)}`
+      : ''
+
+  return `${intro} ${body}${twist}${openingHint}${resultHint}`.replace(/\s+/g, ' ').trim()
+}
+
+function createCommentary(theme, rows, parsed, opening, scene, title) {
   const firstTurningPoint = rows.find((row) => row.cpLoss >= 180)
   const winner = parsed.result === '1-0'
-    ? parsed.headers.White || 'Les Blancs'
+    ? normalizedHeader(parsed.headers.White) || 'Les Blancs'
     : parsed.result === '0-1'
-      ? parsed.headers.Black || 'Les Noirs'
+      ? normalizedHeader(parsed.headers.Black) || 'Les Noirs'
       : null
 
   const parts = []
-  if (opening?.label) parts.push(`L’œuvre s’ouvre sur ${opening.label.toLowerCase()}${opening.family ? `, dans la famille ${opening.family.toLowerCase()}` : ''}.`)
+  parts.push(`Titre généré : « ${title} ».`)
+  if (opening?.label) parts.push(`L’œuvre s’appuie sur ${opening.label.toLowerCase()} et la transpose dans un univers ${scene.label.toLowerCase()}.`)
   parts.push(theme.description)
   if (firstTurningPoint) {
-    parts.push(
-      `Le premier grand basculement apparaît au ${firstTurningPoint.moveNumber}${firstTurningPoint.color === 'w' ? 'e' : '…'} coup avec ${firstTurningPoint.san}.`,
-    )
+    parts.push(`Le premier grand basculement apparaît au ${firstTurningPoint.moveNumber}${firstTurningPoint.color === 'w' ? 'e' : '…'} coup avec ${firstTurningPoint.san}.`)
   }
   if (winner) parts.push(`${winner} impose finalement la direction dominante de la composition.`)
   else if (parsed.result === '1/2-1/2') parts.push('Aucune trajectoire ne parvient à absorber complètement l’autre et la toile reste en équilibre.')
@@ -367,6 +462,14 @@ export async function analyzeGame({ pgn, engine, depth, signal, onProgress }) {
   const white = estimatePlayerLevel(rows, 'w')
   const black = estimatePlayerLevel(rows, 'b')
   const opening = detectOpening(parsed)
+  const scene = selectSceneWorld(theme, opening, rows, parsed.normalizedPgn)
+  const artworkTitle = generateArtworkTitle({
+    normalizedPgn: parsed.normalizedPgn,
+    theme,
+    opening,
+    scene,
+    result: parsed.result,
+  })
 
   return {
     ...parsed,
@@ -375,6 +478,8 @@ export async function analyzeGame({ pgn, engine, depth, signal, onProgress }) {
     players: { white, black },
     theme,
     opening,
-    commentary: createCommentary(theme, rows, parsed, opening),
+    scene,
+    artworkTitle,
+    commentary: createCommentary(theme, rows, parsed, opening, scene, artworkTitle),
   }
 }

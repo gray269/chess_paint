@@ -1,99 +1,84 @@
 const SIZE = 1200
-const MARGIN = 105
-const BOARD_SIZE = SIZE - MARGIN * 2
+const HORIZON = 455
 
-const WHITE_PIECE_BASE = {
-  p: '#d9a35d',
-  n: '#d46a56',
-  b: '#79b99a',
-  r: '#6587d7',
-  q: '#a771d5',
-  k: '#efe2a5',
+const PIECE_VALUES = { p: 1, n: 3, b: 3.2, r: 5, q: 9, k: 20 }
+
+const WHITE_BASE = {
+  p: '#d9b06a',
+  n: '#bc7ac9',
+  b: '#6ca8cb',
+  r: '#4d74c4',
+  q: '#d86b83',
+  k: '#efe1a1',
 }
 
-const THEMES = {
-  'king-storm': {
-    background: ['#140c15', '#382136', '#662941'],
-    accent: '#fff0d0',
-    haze: ['#ff8f62', '#c95ef4'],
-    mode: 'vortex',
-  },
-  sacrifice: {
-    background: ['#17100e', '#39211f', '#6b3825'],
-    accent: '#ffe0a2',
-    haze: ['#ff7e54', '#f2cb7d'],
-    mode: 'ember',
-  },
-  chaos: {
-    background: ['#100f1a', '#2b213d', '#5c2455'],
-    accent: '#f5f1ff',
-    haze: ['#ff5e86', '#6bc8ff'],
-    mode: 'fracture',
-  },
-  endgame: {
-    background: ['#11161c', '#24303a', '#344756'],
-    accent: '#eaf5ff',
-    haze: ['#d6c1a1', '#8fb5c8'],
-    mode: 'geometry',
-  },
-  exchange: {
-    background: ['#17120f', '#342820', '#6b5338'],
-    accent: '#f3e3bf',
-    haze: ['#f0ab61', '#98afbc'],
-    mode: 'erosion',
-  },
-  positional: {
-    background: ['#0f1715', '#1f312a', '#395244'],
-    accent: '#eef9de',
-    haze: ['#d1e4ab', '#7aa6b3'],
-    mode: 'weave',
-  },
-  duel: {
-    background: ['#121018', '#2a2439', '#49385f'],
-    accent: '#f8e8d0',
-    haze: ['#f0b56d', '#8ca0dd'],
-    mode: 'duality',
-  },
-  counterstroke: {
-    background: ['#100f16', '#27273f', '#23324f'],
-    accent: '#f1f0ff',
-    haze: ['#ffaa6b', '#7dd8ff'],
-    mode: 'ripple',
-  },
-  'center-clash': {
-    background: ['#17110d', '#392218', '#5e3426'],
-    accent: '#fff3d0',
-    haze: ['#ffb05f', '#b66ef6'],
-    mode: 'core',
-  },
-  'wing-race': {
-    background: ['#11111b', '#202d4a', '#31406b'],
-    accent: '#eaf2ff',
-    haze: ['#f0ca84', '#73d6d1'],
-    mode: 'sweep',
-  },
-  fortress: {
-    background: ['#101513', '#22332f', '#3d514a'],
-    accent: '#e0f3e3',
-    haze: ['#c7d9b5', '#889cb8'],
-    mode: 'citadel',
-  },
-  promotion: {
-    background: ['#171017', '#2f2140', '#58456d'],
-    accent: '#fff3e5',
-    haze: ['#ffcb7f', '#95a7ff'],
-    mode: 'ascension',
-  },
+const QUALITY_STYLE = {
+  brilliant: { alpha: 0.95, trail: 0.75, width: 9, scale: 1.18 },
+  best: { alpha: 0.92, trail: 0.65, width: 8, scale: 1.12 },
+  excellent: { alpha: 0.9, trail: 0.58, width: 7, scale: 1.07 },
+  good: { alpha: 0.84, trail: 0.48, width: 6, scale: 1.0 },
+  inaccuracy: { alpha: 0.72, trail: 0.34, width: 5, scale: 0.96 },
+  mistake: { alpha: 0.66, trail: 0.28, width: 5, scale: 0.92 },
+  blunder: { alpha: 0.62, trail: 0.22, width: 4.5, scale: 0.88 },
 }
 
-const QUALITY = {
-  brilliant: { width: 10, jitter: 1, alpha: 1, glow: 34, texture: 1.2 },
-  best: { width: 8.5, jitter: 1.6, alpha: 0.96, glow: 22, texture: 1.05 },
-  excellent: { width: 7.2, jitter: 2.8, alpha: 0.92, glow: 15, texture: 1 },
-  good: { width: 6.2, jitter: 6, alpha: 0.84, glow: 10, texture: 0.9 },
-  inaccuracy: { width: 6.5, jitter: 16, alpha: 0.76, glow: 4, texture: 0.82 },
-  mistake: { width: 8.5, jitter: 32, alpha: 0.68, glow: 0, texture: 0.76 },
-  blunder: { width: 11, jitter: 50, alpha: 0.64, glow: 0, texture: 0.72 },
+const SCENE_PROFILES = {
+  'mythic-antique': {
+    sky: ['#f5d7ae', '#d8896e', '#6f597f'],
+    ground: ['#7b6958', '#3e302f'],
+    accents: ['#ffe7b2', '#f5a670', '#9cc5c8'],
+    atmosphere: 'warm',
+    environment: 'temple',
+  },
+  'romantic-storm': {
+    sky: ['#f0b692', '#915a73', '#27304f'],
+    ground: ['#4f413c', '#251f28'],
+    accents: ['#f9dfb0', '#d5787a', '#88bad6'],
+    atmosphere: 'storm',
+    environment: 'cliff',
+  },
+  'alpine-calm': {
+    sky: ['#d7e6ef', '#8db7c2', '#576e88'],
+    ground: ['#7f8d74', '#3e4a45'],
+    accents: ['#f4ead5', '#9bc0b6', '#d4a56d'],
+    atmosphere: 'calm',
+    environment: 'mountain',
+  },
+  'maritime-odyssey': {
+    sky: ['#d8b58f', '#5ea2bf', '#1f436d'],
+    ground: ['#4a676c', '#21343e'],
+    accents: ['#fce3b1', '#85d7d0', '#4f75d1'],
+    atmosphere: 'marine',
+    environment: 'ocean',
+  },
+  'desert-epic': {
+    sky: ['#f4d39f', '#d99667', '#76526b'],
+    ground: ['#a98458', '#563e2f'],
+    accents: ['#fff0c2', '#ed9b5a', '#c05757'],
+    atmosphere: 'dry',
+    environment: 'desert',
+  },
+  'forest-legend': {
+    sky: ['#d9dbb9', '#7f9e84', '#30443c'],
+    ground: ['#58684a', '#233127'],
+    accents: ['#f3efda', '#8dc49b', '#6c91b6'],
+    atmosphere: 'forest',
+    environment: 'forest',
+  },
+  'courtly-renaissance': {
+    sky: ['#f1dfc8', '#d7a98f', '#7b6a7f'],
+    ground: ['#7c7f6a', '#423a39'],
+    accents: ['#fff0d1', '#d36e88', '#91a8c8'],
+    atmosphere: 'courtly',
+    environment: 'garden',
+  },
+  'lunar-dream': {
+    sky: ['#d9d6f0', '#7087b1', '#232742'],
+    ground: ['#54607b', '#222739'],
+    accents: ['#fff5d4', '#bca7ee', '#96d0dd'],
+    atmosphere: 'night',
+    environment: 'lake',
+  },
 }
 
 function hashText(text) {
@@ -120,24 +105,14 @@ function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value))
 }
 
-function squarePoint(square) {
-  const file = square.charCodeAt(0) - 97
-  const rank = Number(square[1]) - 1
-  const cell = BOARD_SIZE / 8
-  return {
-    x: MARGIN + file * cell + cell / 2,
-    y: MARGIN + (7 - rank) * cell + cell / 2,
-  }
+function choose(array, random) {
+  return array[Math.floor(random() * array.length)]
 }
 
 function hexToRgb(hex) {
   const value = hex.replace('#', '')
   const bigint = Number.parseInt(value, 16)
-  return {
-    r: (bigint >> 16) & 255,
-    g: (bigint >> 8) & 255,
-    b: bigint & 255,
-  }
+  return { r: (bigint >> 16) & 255, g: (bigint >> 8) & 255, b: bigint & 255 }
 }
 
 function rgbToHex({ r, g, b }) {
@@ -150,24 +125,18 @@ function rgbToHsl({ r, g, b }) {
   const bb = b / 255
   const max = Math.max(rr, gg, bb)
   const min = Math.min(rr, gg, bb)
-  const lightness = (max + min) / 2
-  if (max === min) return { h: 0, s: 0, l: lightness }
-  const difference = max - min
-  const saturation = lightness > 0.5 ? difference / (2 - max - min) : difference / (max + min)
-  let hue
+  const l = (max + min) / 2
+  if (max === min) return { h: 0, s: 0, l }
+  const d = max - min
+  const s = l > 0.5 ? d / (2 - max - min) : d / (max + min)
+  let h
   switch (max) {
-    case rr:
-      hue = (gg - bb) / difference + (gg < bb ? 6 : 0)
-      break
-    case gg:
-      hue = (bb - rr) / difference + 2
-      break
-    default:
-      hue = (rr - gg) / difference + 4
-      break
+    case rr: h = (gg - bb) / d + (gg < bb ? 6 : 0); break
+    case gg: h = (bb - rr) / d + 2; break
+    default: h = (rr - gg) / d + 4; break
   }
-  hue /= 6
-  return { h: hue * 360, s: saturation, l: lightness }
+  h /= 6
+  return { h: h * 360, s, l }
 }
 
 function hslToRgb({ h, s, l }) {
@@ -207,8 +176,8 @@ function complementColor(hex) {
   const hsl = rgbToHsl(hexToRgb(hex))
   return rgbToHex(hslToRgb({
     h: hsl.h + 180,
-    s: clamp(hsl.s * 0.96 + 0.02, 0, 1),
-    l: clamp(0.54 - (hsl.l - 0.5) * 0.22, 0.2, 0.78),
+    s: clamp(hsl.s * 0.95, 0, 1),
+    l: clamp(0.55 - (hsl.l - 0.5) * 0.2, 0.18, 0.82),
   }))
 }
 
@@ -218,668 +187,566 @@ function withAlpha(hex, alpha) {
 }
 
 function pieceColor(piece, color, index, random) {
-  const base = WHITE_PIECE_BASE[piece] || '#ffffff'
+  const base = WHITE_BASE[piece] || '#ffffff'
   const source = color === 'w' ? base : complementColor(base)
-  const hueShift = (index % 5 - 2) * 1.3 + (random() - 0.5) * 3
-  const lightness = color === 'w' ? (random() - 0.5) * 0.03 : -0.03 + (random() - 0.5) * 0.03
-  return adjustColor(source, { hueShift, lightness })
+  return adjustColor(source, {
+    hueShift: (index % 6 - 2.5) * 1.8 + (random() - 0.5) * 3,
+    lightness: color === 'w' ? (random() - 0.5) * 0.04 : -0.04 + (random() - 0.5) * 0.04,
+  })
 }
 
-function chooseTheme(analysis) {
-  return THEMES[analysis.theme.id] || THEMES.duel
+function sceneProfile(analysis) {
+  return SCENE_PROFILES[analysis.scene?.id] || SCENE_PROFILES['mythic-antique']
 }
 
-function paintBoardAura(ctx, palette) {
-  ctx.save()
-  const gradient = ctx.createRadialGradient(SIZE * 0.5, SIZE * 0.46, 70, SIZE * 0.5, SIZE * 0.5, SIZE * 0.72)
-  gradient.addColorStop(0, palette.background[2] || palette.background[1])
-  gradient.addColorStop(0.55, palette.background[1])
-  gradient.addColorStop(1, palette.background[0])
-  ctx.fillStyle = gradient
+function chooseCamera(random) {
+  const options = [
+    { xScale: 108, yScale: 56, skew: 18, groundY: 905, lift: 26 },
+    { xScale: 98, yScale: 62, skew: -24, groundY: 930, lift: 30 },
+    { xScale: 116, yScale: 50, skew: 0, groundY: 890, lift: 22 },
+  ]
+  return choose(options, random)
+}
+
+function squareToScene(square, camera) {
+  const file = square.charCodeAt(0) - 97
+  const rank = Number(square[1]) - 1
+  const dx = file - 3.5
+  const dy = rank - 3.5
+  const x = SIZE / 2 + dx * camera.xScale + dy * camera.skew
+  const y = camera.groundY - dy * camera.yScale - Math.abs(dx) * camera.lift
+  return { x, y }
+}
+
+function pieceAdvantage(row) {
+  return row.color === 'w' ? row.evalAfter : -row.evalAfter
+}
+
+function drawBackground(ctx, profile, random) {
+  const sky = ctx.createLinearGradient(0, 0, 0, SIZE)
+  sky.addColorStop(0, profile.sky[0])
+  sky.addColorStop(0.45, profile.sky[1])
+  sky.addColorStop(1, profile.sky[2])
+  ctx.fillStyle = sky
   ctx.fillRect(0, 0, SIZE, SIZE)
-  ctx.restore()
-}
 
-function paintAmbientStrokes(ctx, palette, random) {
-  ctx.save()
-  ctx.globalAlpha = 0.1
-  for (let index = 0; index < 85; index += 1) {
-    const color = palette.haze[index % palette.haze.length]
-    const x = random() * SIZE
-    const y = random() * SIZE
-    const length = 120 + random() * 250
-    const angle = random() * Math.PI * 2
-    ctx.strokeStyle = withAlpha(color, 0.12 + random() * 0.08)
-    ctx.lineWidth = 20 + random() * 50
-    ctx.lineCap = 'round'
+  if (profile.atmosphere === 'night') {
+    ctx.fillStyle = 'rgba(255,245,210,0.8)'
     ctx.beginPath()
-    ctx.moveTo(x, y)
-    ctx.quadraticCurveTo(
-      x + Math.cos(angle + 0.6) * length * 0.35,
-      y + Math.sin(angle + 0.6) * length * 0.35,
-      x + Math.cos(angle) * length,
-      y + Math.sin(angle) * length,
-    )
-    ctx.stroke()
+    ctx.arc(930, 130, 56, 0, Math.PI * 2)
+    ctx.fill()
+  } else {
+    const sun = ctx.createRadialGradient(250, 170, 20, 250, 170, 160)
+    sun.addColorStop(0, 'rgba(255,250,220,0.95)')
+    sun.addColorStop(0.55, 'rgba(255,218,160,0.35)')
+    sun.addColorStop(1, 'rgba(255,218,160,0)')
+    ctx.fillStyle = sun
+    ctx.fillRect(0, 0, SIZE, SIZE)
   }
-  ctx.restore()
+
+  drawEnvironment(ctx, profile, random)
+  drawGround(ctx, profile, random)
+  drawCanvasTexture(ctx, profile, random)
 }
 
-function drawThemeBackdrop(ctx, palette, mode, random) {
+function drawEnvironment(ctx, profile, random) {
   ctx.save()
-  switch (mode) {
-    case 'vortex': {
-      ctx.translate(SIZE / 2, SIZE / 2)
-      for (let i = 0; i < 24; i += 1) {
-        const radius = 85 + i * 24
-        ctx.strokeStyle = withAlpha(palette.haze[i % palette.haze.length], 0.09)
-        ctx.lineWidth = 4 + (i % 3)
+  switch (profile.environment) {
+    case 'mountain':
+      for (let i = 0; i < 5; i += 1) {
+        ctx.fillStyle = withAlpha(i % 2 ? profile.sky[2] : profile.ground[0], 0.32 - i * 0.04)
         ctx.beginPath()
-        ctx.arc(0, 0, radius, i * 0.22, i * 0.22 + Math.PI * 1.28)
-        ctx.stroke()
-      }
-      break
-    }
-    case 'ember': {
-      for (let i = 0; i < 34; i += 1) {
-        const x = random() * SIZE
-        const y = SIZE * 0.15 + random() * SIZE * 0.7
-        ctx.fillStyle = withAlpha(palette.haze[i % palette.haze.length], 0.09)
-        ctx.beginPath()
-        ctx.ellipse(x, y, 22 + random() * 38, 60 + random() * 90, random() * Math.PI, 0, Math.PI * 2)
-        ctx.fill()
-      }
-      break
-    }
-    case 'fracture': {
-      for (let i = 0; i < 18; i += 1) {
-        ctx.strokeStyle = withAlpha(palette.haze[i % palette.haze.length], 0.09)
-        ctx.lineWidth = 2 + random() * 4
-        const startX = random() * SIZE
-        const startY = random() * SIZE
-        ctx.beginPath()
-        ctx.moveTo(startX, startY)
-        for (let step = 0; step < 4; step += 1) {
-          ctx.lineTo(startX + (random() - 0.5) * 220, startY + (random() - 0.5) * 220)
-        }
-        ctx.stroke()
-      }
-      break
-    }
-    case 'geometry': {
-      const cell = BOARD_SIZE / 4
-      ctx.strokeStyle = withAlpha(palette.accent, 0.08)
-      ctx.lineWidth = 2
-      for (let i = 0; i <= 4; i += 1) {
-        ctx.beginPath()
-        ctx.moveTo(MARGIN + i * cell, MARGIN)
-        ctx.lineTo(MARGIN + i * cell, SIZE - MARGIN)
-        ctx.stroke()
-        ctx.beginPath()
-        ctx.moveTo(MARGIN, MARGIN + i * cell)
-        ctx.lineTo(SIZE - MARGIN, MARGIN + i * cell)
-        ctx.stroke()
-      }
-      break
-    }
-    case 'erosion': {
-      for (let i = 0; i < 70; i += 1) {
-        ctx.fillStyle = withAlpha(palette.haze[i % palette.haze.length], 0.045)
-        ctx.fillRect(random() * SIZE, random() * SIZE, 18 + random() * 80, 6 + random() * 18)
-      }
-      break
-    }
-    case 'weave': {
-      ctx.strokeStyle = withAlpha(palette.accent, 0.06)
-      for (let i = 0; i < 22; i += 1) {
-        const y = MARGIN + i * (BOARD_SIZE / 21)
-        ctx.lineWidth = 1.5
-        ctx.beginPath()
-        ctx.moveTo(MARGIN, y)
-        ctx.bezierCurveTo(MARGIN + 180, y - 30, SIZE - MARGIN - 180, y + 30, SIZE - MARGIN, y)
-        ctx.stroke()
-      }
-      break
-    }
-    case 'ripple': {
-      const center = { x: SIZE * 0.52, y: SIZE * 0.48 }
-      for (let i = 0; i < 16; i += 1) {
-        ctx.strokeStyle = withAlpha(palette.haze[i % palette.haze.length], 0.08)
-        ctx.lineWidth = 2.5
-        ctx.beginPath()
-        ctx.ellipse(center.x + i * 5, center.y - i * 6, 70 + i * 28, 30 + i * 18, i * 0.12, 0, Math.PI * 2)
-        ctx.stroke()
-      }
-      break
-    }
-    case 'core': {
-      ctx.translate(SIZE / 2, SIZE / 2)
-      for (let i = 0; i < 12; i += 1) {
-        ctx.fillStyle = withAlpha(palette.haze[i % palette.haze.length], 0.055)
-        ctx.beginPath()
-        ctx.moveTo(0, -20 - i * 15)
-        ctx.lineTo(18 + i * 9, 0)
-        ctx.lineTo(0, 20 + i * 15)
-        ctx.lineTo(-18 - i * 9, 0)
+        ctx.moveTo(-50 + i * 220, HORIZON + 45)
+        ctx.lineTo(150 + i * 220, 280 + random() * 180)
+        ctx.lineTo(340 + i * 220, HORIZON + 45)
         ctx.closePath()
         ctx.fill()
-        ctx.rotate(Math.PI / 6)
       }
       break
-    }
-    case 'sweep': {
-      for (let i = 0; i < 22; i += 1) {
-        ctx.strokeStyle = withAlpha(palette.haze[i % palette.haze.length], 0.07)
-        ctx.lineWidth = 12 + random() * 20
+    case 'ocean':
+    case 'cliff':
+      ctx.fillStyle = withAlpha(profile.accents[2], 0.18)
+      ctx.fillRect(0, HORIZON + 55, SIZE, 150)
+      for (let i = 0; i < 18; i += 1) {
+        ctx.strokeStyle = withAlpha(profile.accents[0], 0.09)
+        ctx.lineWidth = 2
         ctx.beginPath()
-        ctx.arc(MARGIN - 100 + i * 18, SIZE * 0.5, 180 + i * 18, -Math.PI / 4, Math.PI / 4)
+        ctx.moveTo(0, HORIZON + 80 + i * 12)
+        ctx.bezierCurveTo(220, HORIZON + 55 + i * 12, 950, HORIZON + 105 + i * 10, SIZE, HORIZON + 85 + i * 12)
         ctx.stroke()
       }
-      break
-    }
-    case 'citadel': {
-      ctx.strokeStyle = withAlpha(palette.accent, 0.08)
-      ctx.lineWidth = 3
-      for (let i = 0; i < 9; i += 1) {
-        const inset = MARGIN - 10 + i * 28
-        ctx.strokeRect(inset, inset, SIZE - inset * 2, SIZE - inset * 2)
-      }
-      break
-    }
-    case 'ascension': {
-      for (let i = 0; i < 30; i += 1) {
-        const x = MARGIN + random() * BOARD_SIZE
-        ctx.strokeStyle = withAlpha(palette.haze[i % palette.haze.length], 0.08)
-        ctx.lineWidth = 2 + random() * 5
+      if (profile.environment === 'cliff') {
+        ctx.fillStyle = withAlpha(profile.ground[1], 0.55)
         ctx.beginPath()
-        ctx.moveTo(x, SIZE - MARGIN)
-        ctx.bezierCurveTo(x - 20, SIZE * 0.72, x + 20, SIZE * 0.38, x + (random() - 0.5) * 120, MARGIN + 20)
-        ctx.stroke()
-      }
-      break
-    }
-    default:
-      for (let i = 0; i < 28; i += 1) {
-        const x = random() * SIZE
-        const y = random() * SIZE
-        ctx.fillStyle = withAlpha(palette.haze[i % palette.haze.length], 0.05)
-        ctx.beginPath()
-        ctx.arc(x, y, 30 + random() * 70, 0, Math.PI * 2)
+        ctx.moveTo(0, HORIZON + 170)
+        ctx.lineTo(0, 360)
+        ctx.lineTo(170, 455)
+        ctx.lineTo(210, HORIZON + 170)
+        ctx.closePath()
         ctx.fill()
       }
       break
-  }
-  ctx.restore()
-}
-
-function paintBackground(ctx, palette, random, analysis) {
-  paintBoardAura(ctx, palette)
-  paintAmbientStrokes(ctx, palette, random)
-  drawThemeBackdrop(ctx, palette, palette.mode, random)
-
-  ctx.save()
-  ctx.globalAlpha = 0.065
-  ctx.strokeStyle = palette.accent
-  ctx.lineWidth = 1.1
-  for (let index = 0; index <= 8; index += 1) {
-    const coordinate = MARGIN + (BOARD_SIZE / 8) * index
-    ctx.beginPath()
-    ctx.moveTo(MARGIN, coordinate)
-    ctx.lineTo(SIZE - MARGIN, coordinate)
-    ctx.stroke()
-    ctx.beginPath()
-    ctx.moveTo(coordinate, MARGIN)
-    ctx.lineTo(coordinate, SIZE - MARGIN)
-    ctx.stroke()
-  }
-  ctx.restore()
-
-  if (analysis.opening) {
-    drawOpeningSigil(ctx, analysis.opening, palette, random)
-  }
-}
-
-function drawOpeningSigil(ctx, opening, palette, random) {
-  const center = { x: SIZE - MARGIN - 125, y: MARGIN + 110 }
-  ctx.save()
-  ctx.translate(center.x, center.y)
-  ctx.strokeStyle = withAlpha(palette.accent, 0.45)
-  ctx.fillStyle = withAlpha(palette.accent, 0.08)
-  ctx.lineWidth = 3
-  ctx.beginPath()
-  ctx.arc(0, 0, 62, 0, Math.PI * 2)
-  ctx.fill()
-  ctx.stroke()
-
-  const symbol = opening.symbol || 'spiral'
-  const drawLine = (x1, y1, x2, y2) => { ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke() }
-  switch (symbol) {
-    case 'arch':
-      ctx.beginPath(); ctx.arc(0, 12, 28, Math.PI, Math.PI * 2); ctx.stroke();
-      drawLine(-28, 12, -28, -26); drawLine(28, 12, 28, -26)
-      break
-    case 'laurel':
-      for (let i = 0; i < 8; i += 1) {
-        ctx.beginPath(); ctx.ellipse(-18 + i * 5, -8 - i * 4, 10, 4, -0.6, 0, Math.PI * 2); ctx.stroke()
-        ctx.beginPath(); ctx.ellipse(18 - i * 5, -8 - i * 4, 10, 4, 0.6, 0, Math.PI * 2); ctx.stroke()
+    case 'desert':
+      for (let i = 0; i < 6; i += 1) {
+        ctx.fillStyle = withAlpha(i % 2 ? profile.ground[0] : profile.accents[0], 0.18)
+        ctx.beginPath()
+        ctx.moveTo(-80, HORIZON + 160 + i * 24)
+        ctx.bezierCurveTo(250, HORIZON + 90 + i * 18, 770, HORIZON + 220 + i * 16, SIZE + 90, HORIZON + 110 + i * 28)
+        ctx.lineTo(SIZE + 90, SIZE)
+        ctx.lineTo(-80, SIZE)
+        ctx.closePath()
+        ctx.fill()
       }
       break
-    case 'wave':
-      for (let i = -2; i <= 2; i += 1) {
-        ctx.beginPath(); ctx.moveTo(-42, i * 10); ctx.bezierCurveTo(-20, i * 10 - 18, 20, i * 10 + 18, 42, i * 10); ctx.stroke()
+    case 'forest':
+      for (let i = 0; i < 14; i += 1) {
+        const x = 40 + i * 88 + random() * 25
+        ctx.strokeStyle = withAlpha(profile.ground[1], 0.28)
+        ctx.lineWidth = 12 + random() * 8
+        ctx.beginPath()
+        ctx.moveTo(x, SIZE)
+        ctx.lineTo(x + random() * 40 - 20, 240 + random() * 260)
+        ctx.stroke()
       }
       break
-    case 'flame':
-      ctx.beginPath(); ctx.moveTo(0, -46); ctx.bezierCurveTo(24, -18, 26, 6, 0, 38); ctx.bezierCurveTo(-24, 6, -26, -18, 0, -46); ctx.stroke()
-      break
-    case 'orb':
-      ctx.beginPath(); ctx.arc(0, 0, 20, 0, Math.PI * 2); ctx.stroke();
-      drawLine(-36, 0, 36, 0); drawLine(0, -36, 0, 36)
-      break
-    case 'mirror':
-      drawLine(-30, -35, -6, 35); drawLine(30, -35, 6, 35); drawLine(-10, -8, 10, -8)
-      break
-    case 'spire':
-      drawLine(0, -42, 0, 38); drawLine(-22, 12, 0, -42); drawLine(22, 12, 0, -42)
-      break
-    case 'mesh':
-      for (let i = -2; i <= 2; i += 1) {
-        drawLine(-36, i * 12, 36, i * 12)
-        drawLine(i * 12, -36, i * 12, 36)
+    case 'garden':
+      for (let i = 0; i < 7; i += 1) {
+        const x = 130 + i * 145
+        ctx.strokeStyle = withAlpha(profile.accents[0], 0.18)
+        ctx.lineWidth = 6
+        ctx.beginPath()
+        ctx.arc(x, HORIZON + 50, 62, Math.PI, Math.PI * 2)
+        ctx.stroke()
+        ctx.fillStyle = withAlpha(profile.ground[0], 0.12)
+        ctx.fillRect(x - 18, HORIZON + 50, 36, 145)
       }
       break
-    case 'crescent':
-      ctx.beginPath(); ctx.arc(-6, 0, 24, Math.PI * 0.35, Math.PI * 1.65); ctx.stroke();
-      ctx.beginPath(); ctx.arc(8, 0, 18, Math.PI * 0.45, Math.PI * 1.55); ctx.stroke();
-      break
-    default:
+    case 'lake':
+      ctx.fillStyle = withAlpha(profile.accents[2], 0.15)
       ctx.beginPath()
-      for (let i = 0; i < 32; i += 1) {
-        const angle = i * 0.36
-        const radius = 6 + i * 1.2
-        const x = Math.cos(angle) * radius
-        const y = Math.sin(angle) * radius
-        if (i === 0) ctx.moveTo(x, y)
-        else ctx.lineTo(x, y)
+      ctx.ellipse(SIZE / 2, HORIZON + 120, 320, 74, 0, 0, Math.PI * 2)
+      ctx.fill()
+      break
+    case 'temple':
+    default:
+      for (let i = 0; i < 6; i += 1) {
+        const x = 100 + i * 155
+        ctx.fillStyle = withAlpha(profile.accents[0], 0.1)
+        ctx.fillRect(x, HORIZON - 40 - random() * 20, 24, 220 + random() * 30)
+        ctx.strokeStyle = withAlpha(profile.ground[1], 0.18)
+        ctx.lineWidth = 3
+        ctx.strokeRect(x, HORIZON - 40 - random() * 20, 24, 220 + random() * 30)
       }
-      ctx.stroke()
       break
   }
-
-  ctx.globalAlpha = 0.62
-  ctx.fillStyle = palette.accent
-  ctx.textAlign = 'center'
-  ctx.font = '600 13px system-ui, sans-serif'
-  ctx.fillText(opening.label, 0, 92)
   ctx.restore()
 }
 
-function drawImpastoStroke(ctx, start, end, config, color, random, progress) {
+function drawGround(ctx, profile, random) {
+  const ground = ctx.createLinearGradient(0, HORIZON, 0, SIZE)
+  ground.addColorStop(0, withAlpha(profile.ground[0], 0.74))
+  ground.addColorStop(1, withAlpha(profile.ground[1], 0.96))
+  ctx.fillStyle = ground
+  ctx.beginPath()
+  ctx.moveTo(0, HORIZON + 110)
+  ctx.bezierCurveTo(200, HORIZON + 80, 480, HORIZON + 150, SIZE, HORIZON + 95)
+  ctx.lineTo(SIZE, SIZE)
+  ctx.lineTo(0, SIZE)
+  ctx.closePath()
+  ctx.fill()
+
+  for (let i = 0; i < 12; i += 1) {
+    ctx.strokeStyle = withAlpha(profile.accents[0], 0.04)
+    ctx.lineWidth = 22 + random() * 26
+    ctx.beginPath()
+    ctx.moveTo(60 + i * 105 + random() * 20, HORIZON + 140)
+    ctx.bezierCurveTo(90 + i * 110, HORIZON + 210 + random() * 60, 40 + i * 100, SIZE - 130, 85 + i * 105, SIZE - 28)
+    ctx.stroke()
+  }
+}
+
+function drawCanvasTexture(ctx, profile, random) {
+  ctx.save()
+  for (let i = 0; i < 2200; i += 1) {
+    ctx.globalAlpha = 0.014 + random() * 0.02
+    ctx.fillStyle = random() > 0.5 ? withAlpha(profile.accents[0], 0.12) : 'rgba(0,0,0,0.08)'
+    ctx.save()
+    ctx.translate(random() * SIZE, random() * SIZE)
+    ctx.rotate((random() - 0.5) * 1.4)
+    ctx.fillRect(-8 - random() * 22, -1 - random() * 3, 16 + random() * 44, 1 + random() * 5)
+    ctx.restore()
+  }
+  ctx.restore()
+}
+
+function drawPath(ctx, start, end, color, style, random) {
   const dx = end.x - start.x
   const dy = end.y - start.y
   const distance = Math.hypot(dx, dy)
-  const perpendicularX = distance ? -dy / distance : 0
-  const perpendicularY = distance ? dx / distance : 0
-  const bend = (random() - 0.5) * (86 + config.jitter * 2.2)
-  const phaseWave = Math.sin(progress * Math.PI * 2) * 24
-  const control1 = {
-    x: start.x + dx * 0.33 + perpendicularX * (bend + phaseWave),
-    y: start.y + dy * 0.33 + perpendicularY * (bend + phaseWave),
-  }
-  const control2 = {
-    x: start.x + dx * 0.66 - perpendicularX * (bend * 0.55),
-    y: start.y + dy * 0.66 - perpendicularY * (bend * 0.55),
+  const nx = distance ? -dy / distance : 0
+  const ny = distance ? dx / distance : 0
+  const bend = (random() - 0.5) * (50 + distance * 0.1)
+  const control = {
+    x: start.x + dx * 0.5 + nx * bend,
+    y: start.y + dy * 0.4 + ny * bend - 24,
   }
 
   ctx.save()
+  ctx.strokeStyle = withAlpha(adjustColor(color, { lightness: -0.08 }), style.trail * 0.4)
+  ctx.lineWidth = style.width * 3.2
   ctx.lineCap = 'round'
-  ctx.lineJoin = 'round'
-
-  ctx.globalAlpha = config.alpha * 0.22
-  ctx.strokeStyle = withAlpha(adjustColor(color, { lightness: -0.12 }), 0.35)
-  ctx.lineWidth = config.width * 2.5
   ctx.beginPath()
   ctx.moveTo(start.x, start.y)
-  ctx.bezierCurveTo(control1.x, control1.y, control2.x, control2.y, end.x, end.y)
+  ctx.quadraticCurveTo(control.x, control.y, end.x, end.y)
   ctx.stroke()
 
-  const passes = 4
-  for (let pass = 0; pass < passes; pass += 1) {
-    const offset = (pass - (passes - 1) / 2) * (config.width * 0.22)
-    ctx.globalAlpha = config.alpha * (0.7 - pass * 0.09)
-    ctx.strokeStyle = pass === 0
-      ? color
-      : adjustColor(color, { lightness: 0.04 - pass * 0.03, saturation: 0.02 })
-    ctx.lineWidth = config.width * (1 - pass * 0.08)
-    ctx.shadowColor = color
-    ctx.shadowBlur = pass === 0 ? config.glow : Math.max(0, config.glow - 10)
+  for (let pass = 0; pass < 3; pass += 1) {
+    ctx.strokeStyle = withAlpha(adjustColor(color, { lightness: 0.04 - pass * 0.03 }), style.trail * (0.54 - pass * 0.12))
+    ctx.lineWidth = style.width * (1.7 - pass * 0.24)
     ctx.beginPath()
-    ctx.moveTo(start.x + perpendicularX * offset, start.y + perpendicularY * offset)
-    ctx.bezierCurveTo(
-      control1.x + perpendicularX * offset,
-      control1.y + perpendicularY * offset,
-      control2.x + perpendicularX * offset,
-      control2.y + perpendicularY * offset,
-      end.x + perpendicularX * offset,
-      end.y + perpendicularY * offset,
-    )
+    ctx.moveTo(start.x + nx * pass * 2, start.y + ny * pass * 2)
+    ctx.quadraticCurveTo(control.x + nx * pass * 2, control.y + ny * pass * 2, end.x, end.y)
     ctx.stroke()
   }
-
-  ctx.shadowBlur = 0
-  for (let i = 0; i < 12; i += 1) {
-    const t = i / 11
-    const x = Math.pow(1 - t, 3) * start.x
-      + 3 * Math.pow(1 - t, 2) * t * control1.x
-      + 3 * (1 - t) * Math.pow(t, 2) * control2.x
-      + Math.pow(t, 3) * end.x
-    const y = Math.pow(1 - t, 3) * start.y
-      + 3 * Math.pow(1 - t, 2) * t * control1.y
-      + 3 * (1 - t) * Math.pow(t, 2) * control2.y
-      + Math.pow(t, 3) * end.y
-    const rotation = Math.atan2(dy, dx) + (random() - 0.5) * 0.3
-    ctx.save()
-    ctx.translate(x, y)
-    ctx.rotate(rotation)
-    ctx.fillStyle = withAlpha(adjustColor(color, { lightness: 0.1 }), 0.09)
-    ctx.fillRect(-config.width * 0.7, -config.width * 0.14, config.width * 1.4, config.width * 0.28)
-    ctx.restore()
-  }
-
   ctx.restore()
 }
 
-function drawDryBrushStroke(ctx, start, end, config, color, random) {
-  const segments = 20
-  const points = []
-  for (let index = 0; index <= segments; index += 1) {
-    const ratio = index / segments
-    points.push({
-      x: start.x + (end.x - start.x) * ratio + (random() - 0.5) * config.jitter,
-      y: start.y + (end.y - start.y) * ratio + (random() - 0.5) * config.jitter,
-    })
-  }
-
+function drawBrushBurst(ctx, point, color, intensity, random) {
   ctx.save()
-  ctx.strokeStyle = color
-  ctx.lineWidth = config.width
-  ctx.lineCap = 'round'
-  ctx.globalAlpha = config.alpha
-  for (let index = 1; index < points.length; index += 1) {
-    if (random() < (config.jitter > 35 ? 0.28 : 0.14)) continue
+  for (let i = 0; i < 6 + intensity * 8; i += 1) {
+    const angle = random() * Math.PI * 2
+    const length = 16 + random() * 34 * intensity
+    ctx.strokeStyle = withAlpha(color, 0.18 + random() * 0.18)
+    ctx.lineWidth = 2 + random() * 5
     ctx.beginPath()
-    ctx.moveTo(points[index - 1].x, points[index - 1].y)
-    ctx.lineTo(points[index].x, points[index].y)
+    ctx.moveTo(point.x, point.y)
+    ctx.lineTo(point.x + Math.cos(angle) * length, point.y + Math.sin(angle) * length)
     ctx.stroke()
-    if (random() < 0.35) {
-      ctx.globalAlpha *= 0.6
-      ctx.lineWidth = config.width * 0.4
-      ctx.beginPath()
-      ctx.moveTo(points[index - 1].x + (random() - 0.5) * 10, points[index - 1].y + (random() - 0.5) * 10)
-      ctx.lineTo(points[index].x + (random() - 0.5) * 10, points[index].y + (random() - 0.5) * 10)
-      ctx.stroke()
-      ctx.globalAlpha = config.alpha
-      ctx.lineWidth = config.width
+  }
+  ctx.restore()
+}
+
+function drawFigureShadow(ctx, x, y, scale) {
+  ctx.save()
+  ctx.fillStyle = 'rgba(0,0,0,0.18)'
+  ctx.beginPath()
+  ctx.ellipse(x, y + 8 * scale, 18 * scale, 7 * scale, 0, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.restore()
+}
+
+function drawPawn(ctx, x, y, scale, color, state) {
+  ctx.save()
+  ctx.translate(x, y)
+  if (state === 'fallen') ctx.rotate(-1.08)
+  ctx.fillStyle = withAlpha(color, 0.9)
+  ctx.strokeStyle = withAlpha(adjustColor(color, { lightness: -0.12 }), 0.55)
+  ctx.lineWidth = 1.8 * scale
+  ctx.beginPath(); ctx.arc(0, -26 * scale, 8 * scale, 0, Math.PI * 2); ctx.fill(); ctx.stroke()
+  ctx.beginPath(); ctx.moveTo(0, -18 * scale); ctx.lineTo(0, 10 * scale); ctx.stroke()
+  ctx.beginPath(); ctx.moveTo(-11 * scale, -4 * scale); ctx.lineTo(10 * scale, -10 * scale); ctx.stroke()
+  ctx.beginPath(); ctx.moveTo(0, -4 * scale); ctx.lineTo(16 * scale, -23 * scale); ctx.stroke()
+  ctx.beginPath(); ctx.moveTo(0, 10 * scale); ctx.lineTo(-10 * scale, 26 * scale); ctx.moveTo(0, 10 * scale); ctx.lineTo(10 * scale, 26 * scale); ctx.stroke()
+  ctx.restore()
+}
+
+function drawKnight(ctx, x, y, scale, color, state) {
+  ctx.save()
+  ctx.translate(x, y)
+  if (state === 'fallen') ctx.rotate(-0.9)
+  ctx.fillStyle = withAlpha(color, 0.9)
+  ctx.strokeStyle = withAlpha(adjustColor(color, { lightness: -0.14 }), 0.55)
+  ctx.lineWidth = 1.8 * scale
+  ctx.beginPath(); ctx.ellipse(-8 * scale, 8 * scale, 18 * scale, 11 * scale, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke()
+  ctx.beginPath(); ctx.moveTo(-17 * scale, 0); ctx.lineTo(-32 * scale, -20 * scale); ctx.lineTo(-8 * scale, -32 * scale); ctx.quadraticCurveTo(9 * scale, -22 * scale, 10 * scale, -4 * scale); ctx.closePath(); ctx.fill(); ctx.stroke()
+  ctx.beginPath(); ctx.moveTo(8 * scale, -3 * scale); ctx.lineTo(22 * scale, 18 * scale); ctx.stroke()
+  ctx.beginPath(); ctx.moveTo(-18 * scale, 18 * scale); ctx.lineTo(-25 * scale, 35 * scale); ctx.moveTo(-5 * scale, 18 * scale); ctx.lineTo(-8 * scale, 35 * scale); ctx.moveTo(7 * scale, 12 * scale); ctx.lineTo(4 * scale, 32 * scale); ctx.stroke()
+  ctx.restore()
+}
+
+function drawBishop(ctx, x, y, scale, color, state) {
+  ctx.save()
+  ctx.translate(x, y)
+  if (state === 'fallen') ctx.rotate(0.88)
+  ctx.fillStyle = withAlpha(color, 0.88)
+  ctx.strokeStyle = withAlpha(adjustColor(color, { lightness: -0.14 }), 0.55)
+  ctx.lineWidth = 1.8 * scale
+  ctx.beginPath(); ctx.moveTo(0, -42 * scale); ctx.quadraticCurveTo(24 * scale, -15 * scale, 16 * scale, 16 * scale); ctx.lineTo(-16 * scale, 16 * scale); ctx.quadraticCurveTo(-24 * scale, -15 * scale, 0, -42 * scale); ctx.closePath(); ctx.fill(); ctx.stroke()
+  ctx.beginPath(); ctx.moveTo(0, -34 * scale); ctx.lineTo(0, -10 * scale); ctx.moveTo(-5 * scale, -22 * scale); ctx.lineTo(5 * scale, -22 * scale); ctx.stroke()
+  ctx.beginPath(); ctx.moveTo(-18 * scale, 16 * scale); ctx.lineTo(-22 * scale, 28 * scale); ctx.lineTo(22 * scale, 28 * scale); ctx.lineTo(18 * scale, 16 * scale); ctx.closePath(); ctx.fill(); ctx.stroke()
+  ctx.restore()
+}
+
+function drawRook(ctx, x, y, scale, color, state) {
+  ctx.save()
+  ctx.translate(x, y)
+  if (state === 'fallen') ctx.rotate(-0.7)
+  ctx.fillStyle = withAlpha(color, 0.86)
+  ctx.strokeStyle = withAlpha(adjustColor(color, { lightness: -0.14 }), 0.55)
+  ctx.lineWidth = 1.8 * scale
+  ctx.fillRect(-18 * scale, -36 * scale, 36 * scale, 48 * scale)
+  ctx.strokeRect(-18 * scale, -36 * scale, 36 * scale, 48 * scale)
+  ctx.clearRect(-13 * scale, -36 * scale, 6 * scale, 9 * scale)
+  ctx.clearRect(-3 * scale, -36 * scale, 6 * scale, 9 * scale)
+  ctx.clearRect(7 * scale, -36 * scale, 6 * scale, 9 * scale)
+  ctx.fillRect(-22 * scale, 12 * scale, 44 * scale, 10 * scale)
+  ctx.strokeRect(-22 * scale, 12 * scale, 44 * scale, 10 * scale)
+  ctx.restore()
+}
+
+function drawQueen(ctx, x, y, scale, color, state) {
+  ctx.save()
+  ctx.translate(x, y)
+  if (state === 'fallen') ctx.rotate(0.82)
+  ctx.fillStyle = withAlpha(color, 0.9)
+  ctx.strokeStyle = withAlpha(adjustColor(color, { lightness: -0.15 }), 0.58)
+  ctx.lineWidth = 1.8 * scale
+  ctx.beginPath()
+  ctx.moveTo(-22 * scale, 18 * scale)
+  ctx.lineTo(-14 * scale, -16 * scale)
+  ctx.lineTo(-5 * scale, -6 * scale)
+  ctx.lineTo(0, -32 * scale)
+  ctx.lineTo(5 * scale, -6 * scale)
+  ctx.lineTo(14 * scale, -16 * scale)
+  ctx.lineTo(22 * scale, 18 * scale)
+  ctx.closePath(); ctx.fill(); ctx.stroke()
+  ctx.beginPath(); ctx.arc(-14 * scale, -18 * scale, 4 * scale, 0, Math.PI * 2); ctx.arc(0, -36 * scale, 4.5 * scale, 0, Math.PI * 2); ctx.arc(14 * scale, -18 * scale, 4 * scale, 0, Math.PI * 2); ctx.fill()
+  ctx.beginPath(); ctx.moveTo(-24 * scale, 18 * scale); ctx.lineTo(24 * scale, 18 * scale); ctx.lineTo(20 * scale, 29 * scale); ctx.lineTo(-20 * scale, 29 * scale); ctx.closePath(); ctx.fill(); ctx.stroke()
+  ctx.restore()
+}
+
+function drawKing(ctx, x, y, scale, color, state) {
+  ctx.save()
+  ctx.translate(x, y)
+  if (state === 'fallen') ctx.rotate(-0.72)
+  ctx.fillStyle = withAlpha(color, 0.92)
+  ctx.strokeStyle = withAlpha(adjustColor(color, { lightness: -0.18 }), 0.6)
+  ctx.lineWidth = 1.9 * scale
+  ctx.beginPath(); ctx.moveTo(-20 * scale, 18 * scale); ctx.lineTo(-12 * scale, -12 * scale); ctx.lineTo(12 * scale, -12 * scale); ctx.lineTo(20 * scale, 18 * scale); ctx.closePath(); ctx.fill(); ctx.stroke()
+  ctx.beginPath(); ctx.arc(0, -18 * scale, 12 * scale, 0, Math.PI * 2); ctx.fill(); ctx.stroke()
+  ctx.beginPath(); ctx.moveTo(0, -43 * scale); ctx.lineTo(0, -12 * scale); ctx.moveTo(-11 * scale, -28 * scale); ctx.lineTo(11 * scale, -28 * scale); ctx.stroke()
+  ctx.beginPath(); ctx.moveTo(-24 * scale, 18 * scale); ctx.lineTo(24 * scale, 18 * scale); ctx.lineTo(20 * scale, 29 * scale); ctx.lineTo(-20 * scale, 29 * scale); ctx.closePath(); ctx.fill(); ctx.stroke()
+  ctx.restore()
+}
+
+function drawPieceFigure(ctx, piece, x, y, scale, color, state) {
+  drawFigureShadow(ctx, x, y + 16 * scale, scale)
+  switch (piece) {
+    case 'p': drawPawn(ctx, x, y, scale, color, state); break
+    case 'n': drawKnight(ctx, x, y, scale, color, state); break
+    case 'b': drawBishop(ctx, x, y, scale, color, state); break
+    case 'r': drawRook(ctx, x, y, scale, color, state); break
+    case 'q': drawQueen(ctx, x, y, scale, color, state); break
+    case 'k': drawKing(ctx, x, y, scale, color, state); break
+    default: drawPawn(ctx, x, y, scale, color, state); break
+  }
+}
+
+function drawExchangeMotif(ctx, point, color, balanced) {
+  ctx.save()
+  ctx.strokeStyle = withAlpha(color, balanced ? 0.28 : 0.18)
+  ctx.lineWidth = balanced ? 2.4 : 1.5
+  ctx.beginPath()
+  ctx.arc(point.x, point.y - 18, balanced ? 34 : 22, 0, Math.PI * 2)
+  ctx.stroke()
+  if (balanced) {
+    ctx.beginPath(); ctx.moveTo(point.x - 26, point.y - 18); ctx.lineTo(point.x + 26, point.y - 18); ctx.moveTo(point.x, point.y - 44); ctx.lineTo(point.x, point.y + 8); ctx.stroke()
+  }
+  ctx.restore()
+}
+
+function drawSceneTitle(ctx, analysis, profile) {
+  ctx.save()
+  ctx.fillStyle = withAlpha(profile.accents[0], 0.9)
+  ctx.shadowColor = 'rgba(0,0,0,0.18)'
+  ctx.shadowBlur = 12
+  ctx.textAlign = 'center'
+  ctx.font = '600 38px Georgia, serif'
+  ctx.fillText(analysis.artworkTitle || analysis.theme.label, SIZE / 2, 76)
+  ctx.shadowBlur = 0
+  ctx.font = '18px Georgia, serif'
+  ctx.fillStyle = withAlpha(profile.accents[0], 0.7)
+  const sub = `${analysis.scene?.label || ''} · ${analysis.opening?.label || 'Ouverture libre'} · ${analysis.theme.label}`
+  ctx.fillText(sub, SIZE / 2, 108)
+  ctx.restore()
+}
+
+function drawCommentCartouche(ctx, analysis, profile) {
+  ctx.save()
+  ctx.fillStyle = 'rgba(20, 18, 23, 0.24)'
+  ctx.strokeStyle = withAlpha(profile.accents[0], 0.26)
+  roundRect(ctx, 72, 1018, 1056, 110, 18)
+  ctx.fill(); ctx.stroke()
+  ctx.fillStyle = withAlpha(profile.accents[0], 0.8)
+  ctx.font = '600 21px Georgia, serif'
+  ctx.fillText(analysis.headers.White || 'Blancs', 98, 1052)
+  ctx.fillText('contre', 262, 1052)
+  ctx.fillText(analysis.headers.Black || 'Noirs', 330, 1052)
+  ctx.font = '17px Georgia, serif'
+  const text = `${analysis.commentary}`
+  wrapText(ctx, text, 98, 1085, 998, 22)
+  ctx.restore()
+}
+
+function roundRect(ctx, x, y, width, height, radius) {
+  ctx.beginPath()
+  ctx.moveTo(x + radius, y)
+  ctx.arcTo(x + width, y, x + width, y + height, radius)
+  ctx.arcTo(x + width, y + height, x, y + height, radius)
+  ctx.arcTo(x, y + height, x, y, radius)
+  ctx.arcTo(x, y, x + width, y, radius)
+  ctx.closePath()
+}
+
+function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+  const words = text.split(' ')
+  let line = ''
+  let currentY = y
+  for (const word of words) {
+    const testLine = line ? `${line} ${word}` : word
+    const width = ctx.measureText(testLine).width
+    if (width > maxWidth && line) {
+      ctx.fillText(line, x, currentY)
+      line = word
+      currentY += lineHeight
+      if (currentY > y + 46) break
+    } else {
+      line = testLine
     }
   }
-  ctx.restore()
+  if (line && currentY <= y + 46) ctx.fillText(line, x, currentY)
 }
 
-function drawSplatter(ctx, point, color, intensity, random) {
-  ctx.save()
-  ctx.fillStyle = color
-  const count = 8 + Math.round(intensity * 20)
-  for (let index = 0; index < count; index += 1) {
-    const angle = random() * Math.PI * 2
-    const distance = random() * (30 + intensity * 65)
-    const radius = random() * (3 + intensity * 10) + 1
-    ctx.globalAlpha = 0.15 + random() * 0.45
-    ctx.beginPath()
-    ctx.arc(
-      point.x + Math.cos(angle) * distance,
-      point.y + Math.sin(angle) * distance,
-      radius,
-      0,
-      Math.PI * 2,
-    )
-    ctx.fill()
-  }
-  ctx.restore()
+function figureState(row) {
+  if (row.motifs.includes('mat')) return 'heroic'
+  if (row.quality === 'blunder') return 'stagger'
+  if (row.quality === 'mistake') return 'weakened'
+  return 'active'
 }
 
-function drawCaptureMotif(ctx, point, color, random) {
-  ctx.save()
-  ctx.translate(point.x, point.y)
-  ctx.strokeStyle = withAlpha(color, 0.38)
-  ctx.fillStyle = withAlpha(adjustColor(color, { lightness: 0.1 }), 0.08)
-  ctx.lineWidth = 2.4
-  for (let petal = 0; petal < 6; petal += 1) {
-    const angle = (Math.PI * 2 * petal) / 6
-    ctx.rotate(Math.PI / 3)
-    ctx.beginPath()
-    ctx.moveTo(0, 0)
-    ctx.bezierCurveTo(12, -10, 26, -6, 30, 0)
-    ctx.bezierCurveTo(26, 6, 12, 10, 0, 0)
-    ctx.fill()
-    ctx.stroke()
-  }
-  ctx.beginPath()
-  ctx.arc(0, 0, 10 + random() * 4, 0, Math.PI * 2)
-  ctx.stroke()
-  ctx.restore()
-}
+function buildFigureEvents(analysis, camera, random) {
+  const events = []
+  analysis.rows.forEach((row, index) => {
+    const start = squareToScene(row.from, camera)
+    const end = squareToScene(row.to, camera)
+    const style = QUALITY_STYLE[row.quality] || QUALITY_STYLE.good
+    const color = pieceColor(row.piece, row.color, index, random)
+    const precision = row.color === 'w' ? analysis.players.white?.estimated || 1300 : analysis.players.black?.estimated || 1300
+    const advantage = pieceAdvantage(row)
+    const baseScale = 0.85 + Math.max(-0.18, Math.min(0.26, advantage / 1300)) + (style.scale - 1) * 0.5
+    events.push({
+      type: 'move',
+      row,
+      start,
+      end,
+      color,
+      style,
+      scale: baseScale + (precision - 1200) / 8000,
+      state: figureState(row),
+    })
 
-function drawCheckMotif(ctx, point, color, isMate) {
-  ctx.save()
-  ctx.translate(point.x, point.y)
-  ctx.strokeStyle = withAlpha(color, isMate ? 0.92 : 0.58)
-  ctx.lineWidth = isMate ? 4.8 : 2.6
-  const spikes = isMate ? 12 : 7
-  const outer = isMate ? 82 : 46
-  const inner = isMate ? 26 : 18
-  for (let index = 0; index < spikes; index += 1) {
-    const angle = (-Math.PI / 2) + (Math.PI * 2 * index) / spikes
-    ctx.beginPath()
-    ctx.moveTo(Math.cos(angle) * inner, Math.sin(angle) * inner)
-    ctx.lineTo(Math.cos(angle) * outer, Math.sin(angle) * outer)
-    ctx.stroke()
-  }
-  ctx.beginPath()
-  ctx.arc(0, 0, isMate ? 30 : 18, 0, Math.PI * 2)
-  ctx.stroke()
-  if (isMate) {
-    ctx.fillStyle = withAlpha(adjustColor(color, { lightness: 0.08 }), 0.08)
-    ctx.beginPath()
-    ctx.arc(0, 0, 56, 0, Math.PI * 2)
-    ctx.fill()
-  }
-  ctx.restore()
-}
-
-function drawCastlingMotif(ctx, point, color) {
-  ctx.save()
-  ctx.strokeStyle = withAlpha(color, 0.5)
-  ctx.lineWidth = 4
-  ctx.beginPath()
-  ctx.arc(point.x, point.y + 20, 55, Math.PI, Math.PI * 2)
-  ctx.stroke()
-  ctx.beginPath()
-  ctx.moveTo(point.x - 24, point.y + 18)
-  ctx.lineTo(point.x + 24, point.y + 18)
-  ctx.stroke()
-  ctx.restore()
-}
-
-function drawPromotionMotif(ctx, point, color) {
-  ctx.save()
-  ctx.fillStyle = withAlpha(color, 0.2)
-  ctx.strokeStyle = withAlpha(color, 0.72)
-  ctx.lineWidth = 3
-  ctx.translate(point.x, point.y)
-  ctx.beginPath()
-  for (let index = 0; index < 10; index += 1) {
-    const radius = index % 2 === 0 ? 44 : 16
-    const angle = -Math.PI / 2 + (index * Math.PI) / 5
-    const x = Math.cos(angle) * radius
-    const y = Math.sin(angle) * radius
-    if (index === 0) ctx.moveTo(x, y)
-    else ctx.lineTo(x, y)
-  }
-  ctx.closePath()
-  ctx.fill()
-  ctx.stroke()
-  ctx.restore()
-}
-
-function drawPieceStamp(ctx, row, point, color, random) {
-  ctx.save()
-  ctx.translate(point.x, point.y)
-  ctx.strokeStyle = withAlpha(adjustColor(color, { lightness: 0.08 }), 0.4)
-  ctx.fillStyle = withAlpha(color, 0.14)
-  ctx.lineWidth = 2
-  switch (row.piece) {
-    case 'p':
-      ctx.beginPath(); ctx.arc(0, 0, 7 + random() * 2, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-      break
-    case 'n':
-      ctx.beginPath();
-      for (let i = 0; i < 20; i += 1) {
-        const angle = i * 0.5
-        const radius = 2 + i * 0.9
-        const x = Math.cos(angle) * radius
-        const y = Math.sin(angle) * radius
-        if (i === 0) ctx.moveTo(x, y)
-        else ctx.lineTo(x, y)
-      }
-      ctx.stroke()
-      break
-    case 'b':
-      ctx.beginPath(); ctx.moveTo(0, -16); ctx.lineTo(14, 0); ctx.lineTo(0, 16); ctx.lineTo(-14, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
-      break
-    case 'r':
-      ctx.fillRect(-12, -12, 24, 24); ctx.strokeRect(-12, -12, 24, 24)
-      break
-    case 'q':
-      ctx.beginPath()
-      for (let i = 0; i < 12; i += 1) {
-        const radius = i % 2 === 0 ? 18 : 8
-        const angle = -Math.PI / 2 + (i * Math.PI) / 6
-        const x = Math.cos(angle) * radius
-        const y = Math.sin(angle) * radius
-        if (i === 0) ctx.moveTo(x, y)
-        else ctx.lineTo(x, y)
-      }
-      ctx.closePath(); ctx.fill(); ctx.stroke()
-      break
-    case 'k':
-      ctx.beginPath(); ctx.arc(0, 0, 12, 0, Math.PI * 2); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(0, -18); ctx.lineTo(0, 18); ctx.moveTo(-18, 0); ctx.lineTo(18, 0); ctx.stroke();
-      break
-    default:
-      break
-  }
-  ctx.restore()
-}
-
-function drawMotifs(ctx, row, point, color, random) {
-  if (row.motifs.includes('capture')) drawCaptureMotif(ctx, point, color, random)
-  if (row.motifs.includes('échec')) drawCheckMotif(ctx, point, color, false)
-  if (row.motifs.includes('mat')) drawCheckMotif(ctx, point, color, true)
-  if (row.motifs.includes('promotion')) drawPromotionMotif(ctx, point, color)
-  if (row.motifs.includes('roque')) drawCastlingMotif(ctx, point, color)
-  drawPieceStamp(ctx, row, point, color, random)
-}
-
-function drawOilTexture(ctx, palette, random) {
-  ctx.save()
-  for (let i = 0; i < 1600; i += 1) {
-    const x = random() * SIZE
-    const y = random() * SIZE
-    const w = 6 + random() * 26
-    const h = 1 + random() * 4
-    ctx.globalAlpha = 0.022 + random() * 0.02
-    ctx.fillStyle = random() > 0.5 ? withAlpha(palette.accent, 0.1) : 'rgba(0,0,0,0.08)'
-    ctx.save()
-    ctx.translate(x, y)
-    ctx.rotate((random() - 0.5) * 1.2)
-    ctx.fillRect(-w / 2, -h / 2, w, h)
-    ctx.restore()
-  }
-  ctx.restore()
-}
-
-function drawVarnish(ctx) {
-  const glaze = ctx.createLinearGradient(0, 0, SIZE, SIZE)
-  glaze.addColorStop(0, 'rgba(255,255,255,0.05)')
-  glaze.addColorStop(0.5, 'rgba(255,255,255,0.01)')
-  glaze.addColorStop(1, 'rgba(0,0,0,0.08)')
-  ctx.save()
-  ctx.globalAlpha = 0.32
-  ctx.fillStyle = glaze
-  ctx.fillRect(0, 0, SIZE, SIZE)
-  ctx.restore()
-}
-
-function drawSignature(ctx, analysis, palette) {
-  const whiteName = analysis.headers.White || 'Blancs'
-  const blackName = analysis.headers.Black || 'Noirs'
-  const opening = analysis.opening?.label || 'Ouverture libre'
-  ctx.save()
-  ctx.fillStyle = palette.accent
-  ctx.globalAlpha = 0.72
-  ctx.font = '600 25px system-ui, sans-serif'
-  ctx.fillText(`${whiteName} — ${blackName}`, MARGIN, SIZE - 62)
-  ctx.globalAlpha = 0.48
-  ctx.font = '18px system-ui, sans-serif'
-  ctx.fillText(opening, MARGIN, SIZE - 34)
-  ctx.textAlign = 'right'
-  ctx.fillText(analysis.theme.label, SIZE - MARGIN, SIZE - 48)
-  ctx.restore()
+    if (row.captured) {
+      const capturedColor = pieceColor(row.captured, row.color === 'w' ? 'b' : 'w', index + 3, random)
+      const valueDiff = Math.abs((PIECE_VALUES[row.piece] || 0) - (PIECE_VALUES[row.captured] || 0))
+      events.push({
+        type: 'capture',
+        row,
+        point: { x: end.x + 18 + (random() - 0.5) * 26, y: end.y + 24 + (random() - 0.5) * 18 },
+        color: capturedColor,
+        piece: row.captured,
+        balanced: valueDiff <= 1.2,
+      })
+    }
+  })
+  return events
 }
 
 export function renderPainting(canvas, analysis, sourcePgn) {
   canvas.width = SIZE
   canvas.height = SIZE
   const ctx = canvas.getContext('2d')
-  const seed = hashText(sourcePgn)
+  const seed = hashText(`${sourcePgn}|${analysis.artworkTitle || ''}|narrative`)
   const random = randomGenerator(seed)
-  const palette = chooseTheme(analysis)
+  const profile = sceneProfile(analysis)
+  const camera = chooseCamera(random)
 
-  paintBackground(ctx, palette, random, analysis)
+  drawBackground(ctx, profile, random)
+  drawSceneTitle(ctx, analysis, profile)
 
-  analysis.rows.forEach((row, index) => {
-    const start = squarePoint(row.from)
-    const end = squarePoint(row.to)
-    const config = QUALITY[row.quality] || QUALITY.good
-    const color = pieceColor(row.piece, row.color, index, random)
-    const progress = index / Math.max(1, analysis.rows.length - 1)
+  const events = buildFigureEvents(analysis, camera, random)
 
-    const precision = row.color === 'w'
-      ? analysis.players.white?.estimated || 1200
-      : analysis.players.black?.estimated || 1200
-    const levelFactor = clamp(precision / 1700, 0.48, 1.24)
-    const adjusted = {
-      ...config,
-      jitter: config.jitter / levelFactor,
-      width: config.width * (1.18 - Math.min(0.35, precision / 7000)),
+  for (const event of events.filter((entry) => entry.type === 'move')) {
+    drawPath(ctx, event.start, event.end, event.color, event.style, random)
+    if (event.row.quality === 'mistake' || event.row.quality === 'blunder') {
+      drawBrushBurst(ctx, event.end, event.color, event.row.quality === 'blunder' ? 1.5 : 1, random)
     }
+    if (event.row.motifs.includes('échec') || event.row.motifs.includes('mat')) {
+      drawBrushBurst(ctx, event.end, event.color, event.row.motifs.includes('mat') ? 2.2 : 1.2, random)
+    }
+  }
 
-    ctx.globalCompositeOperation = index % 8 === 0 ? 'screen' : 'source-over'
-    if (['mistake', 'blunder'].includes(row.quality)) {
-      drawDryBrushStroke(ctx, start, end, adjusted, color, random)
-      drawSplatter(ctx, end, color, row.quality === 'blunder' ? 1 : 0.55, random)
+  const figures = []
+  for (const event of events) {
+    if (event.type === 'move') {
+      figures.push({
+        y: event.end.y,
+        draw() {
+          const echoCount = event.style.scale > 1.05 ? 2 : 1
+          for (let i = 0; i < echoCount; i += 1) {
+            const ratio = i / Math.max(1, echoCount)
+            const ex = event.start.x + (event.end.x - event.start.x) * ratio * 0.8
+            const ey = event.start.y + (event.end.y - event.start.y) * ratio * 0.8
+            ctx.save()
+            ctx.globalAlpha = 0.28 - i * 0.08
+            drawPieceFigure(ctx, event.row.piece, ex, ey, event.scale * (0.72 - i * 0.12), event.color, 'active')
+            ctx.restore()
+          }
+          const finalScale = event.scale * (event.row.motifs.includes('mat') ? 1.28 : 1)
+          const finalState = event.state === 'heroic' ? 'active' : event.state
+          drawPieceFigure(ctx, event.row.piece, event.end.x, event.end.y, finalScale, event.color, finalState)
+        },
+      })
     } else {
-      drawImpastoStroke(ctx, start, end, adjusted, color, random, progress)
+      figures.push({
+        y: event.point.y + 12,
+        draw() {
+          drawPieceFigure(ctx, event.piece, event.point.x, event.point.y, 0.72, event.color, 'fallen')
+          drawExchangeMotif(ctx, event.point, event.color, event.balanced)
+        },
+      })
     }
+  }
 
-    if (random() < 0.2) drawSplatter(ctx, start, withAlpha(color, 0.45), 0.15, random)
-    drawMotifs(ctx, row, end, color, random)
-  })
+  figures.sort((a, b) => a.y - b.y)
+  figures.forEach((figure) => figure.draw())
 
-  ctx.globalCompositeOperation = 'source-over'
-  drawOilTexture(ctx, palette, random)
-  drawVarnish(ctx)
-  drawSignature(ctx, analysis, palette)
+  ctx.save()
+  ctx.strokeStyle = withAlpha(profile.accents[0], 0.18)
+  ctx.lineWidth = 1.2
+  ctx.setLineDash([6, 14])
+  for (let file = 0; file < 8; file += 1) {
+    const a = squareToScene(String.fromCharCode(97 + file) + '1', camera)
+    const b = squareToScene(String.fromCharCode(97 + file) + '8', camera)
+    ctx.beginPath(); ctx.moveTo(a.x, a.y + 18); ctx.lineTo(b.x, b.y - 36); ctx.stroke()
+  }
+  for (let rank = 1; rank <= 8; rank += 1) {
+    const a = squareToScene(`a${rank}`, camera)
+    const b = squareToScene(`h${rank}`, camera)
+    ctx.beginPath(); ctx.moveTo(a.x, a.y + 18); ctx.lineTo(b.x, b.y + 18); ctx.stroke()
+  }
+  ctx.restore()
+
+  drawCommentCartouche(ctx, analysis, profile)
+
+  ctx.save()
+  const glaze = ctx.createLinearGradient(0, 0, SIZE, SIZE)
+  glaze.addColorStop(0, 'rgba(255,255,255,0.05)')
+  glaze.addColorStop(0.5, 'rgba(255,255,255,0.01)')
+  glaze.addColorStop(1, 'rgba(0,0,0,0.1)')
+  ctx.fillStyle = glaze
+  ctx.globalAlpha = 0.32
+  ctx.fillRect(0, 0, SIZE, SIZE)
+  ctx.restore()
 }
 
 export function downloadPainting(canvas, filename = 'chess-paint.png') {

@@ -153,6 +153,11 @@ function renderResults(analysis) {
 
   elements.summaryCards.innerHTML = [
     createSummaryCard(
+      'Titre généré',
+      analysis.artworkTitle || 'Sans titre',
+      analysis.scene?.label ? `Univers : ${analysis.scene.label}` : 'Univers non défini',
+    ),
+    createSummaryCard(
       playerName(analysis, 'w'),
       white ? `≈ ${white.range}` : '—',
       white ? `${white.averageLoss} cp de perte moyenne · ${white.bestRate} % de coups précis` : 'Estimation indisponible',
@@ -168,13 +173,18 @@ function renderResults(analysis) {
       analysis.opening?.family ? `Famille : ${analysis.opening.family}` : 'Aucune famille reconnue',
     ),
     createSummaryCard(
+      'Thème',
+      analysis.theme.label,
+      analysis.scene?.family ? `Registre : ${analysis.scene.family}` : 'Registre libre',
+    ),
+    createSummaryCard(
       'Évaluation finale',
       formatEvaluation(lastEvaluation),
       `${analysis.rows.length} demi-coups analysés · résultat ${analysis.result}`,
     ),
   ].join('')
 
-  elements.themeTitle.textContent = analysis.theme.label
+  elements.themeTitle.textContent = `${analysis.artworkTitle || 'Sans titre'} — ${analysis.theme.label}`
   elements.themeCommentary.textContent = analysis.commentary
 
   elements.movesTable.innerHTML = analysis.rows.map((row) => {

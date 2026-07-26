@@ -1,46 +1,169 @@
-import assert from 'node:assert/strict'
-import { normalizePgn, parsePgn } from '../src/chess-analysis.js'
+# Chess Paint
 
-const pastedPgn = `1. e4 e5 2. Nf3 Nc6 3. d4 exd4 4. Nxd4 Nf6 5. Nxc6 bxc6 6. e5 h6 7. exf6 Qxf6 8.
-Nc3 Qe6+ 9. Be3 Bd6 10. Bd3 Ba6 11. Bxa6 f6 12. Qd2 Bf8 13. O-O-O Rd8 14. Rde1
-Be7 15. Bc5 Bxc5 16. Rxe6+ dxe6 17. Qe2 Bxf2 18. Qxf2 h5 19. Qe2 Rd4 20. Rd1
-Rxd1+ 21. Kxd1 Kd7 22. Bc4 Ke7 23. Qxe6+ Kd8 24. Qxc6 Rh7 25. Be6 g5 26. Nd5 a5
-27. Qa8# 1-0`
+Version actuelle : **0.4.0**
 
-const parsed = parsePgn(pastedPgn)
-assert.equal(parsed.halfMoveCount, 53)
-assert.equal(parsed.displayedMoveCount, 27)
-assert.equal(parsed.result, '1-0')
-assert.equal(parsed.moves.at(-1).san, 'Qa8#')
+**Chess Paint** transforme une partie d’échecs au format PGN en peinture procédurale.
 
-console.log('PGN collé reconnu : 53 demi-coups, résultat 1-0, mat par Qa8#.')
+- Stockfish analyse chaque position directement dans le navigateur.
+- Les coups sont classés : brillant, meilleur, excellent, bon, imprécision, erreur ou gaffe.
+- Un niveau indicatif est calculé pour chaque joueur.
+- Les échecs, captures, roques, promotions et sacrifices potentiels influencent la peinture.
+- Aucune IA générative ne produit l’image : le dessin vient uniquement d’un algorithme Canvas.
+- Le PGN et les résultats ne sont envoyés vers aucun serveur.
+- L’application peut être installée sur Android ou iPhone comme une PWA.
 
-const aggressivelyWrappedPgn = `1. e4 e5 2. Nf3 Nc6 3. d4 exd4 4. Nxd4 Nf6 5. Nxc6 bxc6 6. e5 h6 7. exf6 Qxf6 8.
+> L’estimation Elo et les catégories de coups sont expérimentales. Elles ne reproduisent pas exactement Chess.com ou Lichess.
 
-Nc3	Qe6+ 9. Be3 Bd6 10. Bd3 Ba6 11. Bxa6 f6 12. Qd2 Bf8 13. O-O-O Rd8 14. Rde1
-Be7 15. Bc5 Bxc5 16. Rxe6+ dxe6 17. Qe2 Bxf2 18. Qxf2 h5 19. Qe2 Rd4 20. Rd1
-Rxd1+ 21. Kxd1 Kd7 22. Bc4 Ke7 23. Qxe6+ Kd8 24. Qxc6 Rh7 25. Be6 g5 26. Nd5 a5
-27. Qa8# 1-0`
+## Mise en ligne sur GitHub
 
-const normalized = normalizePgn(aggressivelyWrappedPgn)
-assert.equal(normalized.includes('\n'), false, 'Un PGN sans en-têtes doit être remis sur une seule ligne.')
-const wrappedParsed = parsePgn(aggressivelyWrappedPgn)
-assert.equal(wrappedParsed.halfMoveCount, 53)
-assert.equal(wrappedParsed.moves.at(-1).san, 'Qa8#')
+### 1. Créer le dépôt
 
-console.log('Retours à la ligne et espaces multiples normalisés avec succès.')
+1. Sur GitHub, crée un nouveau dépôt, par exemple `chess-paint`.
+2. Décompresse le fichier ZIP de ce projet.
+3. Envoie **tout le contenu du dossier** dans le dépôt, y compris le dossier `.github`.
+4. Vérifie que la branche principale s’appelle `main`.
 
-const chessComWrappedPgn = `1. e4 e5 2. Nf3 Qf6 3. Nc3 Na6 4. d4 exd4 5. Nxd4 Nb4 6. Nf3 Qc6 7. a3 Na6 8.
-Bd3 Qg6 9. O-O Qg4 10. Re1 Nc5 11. Nd5 c6 12. Nc7+ Kd8 13. Nxa8 Nxd3 14. Qxd3
-Qe6 15. Ng5 Qe7 16. Qf3 h6 17. Nxf7+ Qxf7 18. Qxf7 Ne7 19. Bf4 d6 20. e5 dxe5
-21. Rxe5 g5 22. Bd2 b6 23. Rae1 Bd7 24. Rxe7 Bxe7 25. Qxe7+ Kc8 26. Qd6 Kb7 27.
-Qc7+ Kxa8 28. Qxd7 Rg8 29. Re8+ Rxe8 30. Qxe8+ Kb7 31. Qd7+ Kb8 32. f4 c5 33.
-fxg5 hxg5 34. h4 a5 35. hxg5 Ka8 36. Bf4 a4 37. Qc7 b5 38. Qb8# 1-0`
+Tu peux aussi utiliser GitHub Desktop :
 
-const chessComParsed = parsePgn(chessComWrappedPgn)
-assert.equal(chessComParsed.halfMoveCount, 75)
-assert.equal(chessComParsed.displayedMoveCount, 38)
-assert.equal(chessComParsed.result, '1-0')
-assert.equal(chessComParsed.moves.at(-1).san, 'Qb8#')
+```bash
+git init
+git add .
+git commit -m "Première version de Chess Paint"
+git branch -M main
+git remote add origin https://github.com/TON-COMPTE/chess-paint.git
+git push -u origin main
+```
 
-console.log('PGN Chess.com sur plusieurs lignes reconnu : 75 demi-coups, résultat 1-0.')
+### 2. Activer GitHub Pages
+
+1. Ouvre ton dépôt GitHub.
+2. Va dans **Settings → Pages**.
+3. Dans **Build and deployment**, choisis **GitHub Actions** comme source.
+4. Ouvre ensuite l’onglet **Actions** du dépôt.
+5. Le workflow **Déployer Chess Paint** construit et publie automatiquement l’application.
+
+L’adresse sera de la forme :
+
+```text
+https://TON-COMPTE.github.io/chess-paint/
+```
+
+Le nom du dépôt est détecté automatiquement : tu n’as pas besoin de modifier `vite.config.js`.
+
+## Installation sur téléphone
+
+### Android avec Chrome
+
+1. Ouvre l’adresse GitHub Pages.
+2. Appuie sur le bouton **Installer l’application** lorsqu’il apparaît.
+3. Sinon, ouvre le menu ⋮ de Chrome puis **Ajouter à l’écran d’accueil** ou **Installer l’application**.
+
+### iPhone avec Safari
+
+1. Ouvre l’adresse dans Safari.
+2. Appuie sur l’icône **Partager**.
+3. Choisis **Sur l’écran d’accueil**.
+
+Après une première ouverture complète, le moteur et l’interface sont mis en cache pour une utilisation hors ligne.
+
+## Utilisation
+
+1. Colle directement une partie PGN dans la grande zone, utilise le bouton **Coller le PGN**, ou ouvre un fichier `.pgn`. Les retours à la ligne et espaces multiples du texte des coups sont automatiquement normalisés. La zone ne coupe plus visuellement les lignes : elle défile horizontalement.
+2. Vérifie que le cadre vert indique **PGN reconnu — prêt à analyser**. Le bouton d’analyse reste désactivé tant que le texte n’est pas reconnu.
+3. Choisis la profondeur :
+   - 8 : rapide sur téléphone ;
+   - 10 : bon compromis ;
+   - 12 : plus précis, mais plus long.
+4. Appuie sur le bouton **Analyser cette partie**. Coller le texte ne lance pas automatiquement Stockfish.
+5. Suis la progression affichée position par position.
+6. Exporte l’œuvre avec **Exporter en PNG**.
+
+La même partie, avec les mêmes paramètres, produit la même peinture.
+
+## Lancer le projet sur un ordinateur
+
+Prérequis : Node.js 20.19 ou plus récent.
+
+```bash
+npm install
+npm run dev
+```
+
+Puis ouvre l’adresse locale indiquée par Vite.
+
+Pour vérifier que le collage PGN fonctionne puis tester la version de production :
+
+```bash
+npm run test:pgn
+npm run build
+npm run preview
+```
+
+Pendant la construction, le script `scripts/copy-stockfish.mjs` copie automatiquement la version légère et mono-thread de Stockfish dans l’application. Ces fichiers ne sont donc pas stockés directement dans ce dépôt.
+
+## Organisation du projet
+
+```text
+chess-paint/
+├── .github/workflows/deploy.yml  # déploiement GitHub Pages
+├── public/                       # icônes et ressources statiques
+├── scripts/copy-stockfish.mjs    # copie du moteur depuis npm
+├── src/
+│   ├── chess-analysis.js         # analyse et classification des coups
+│   ├── painting.js               # génération procédurale Canvas
+│   ├── stockfish-engine.js       # communication UCI avec Stockfish
+│   ├── main.js                   # interface et événements
+│   └── style.css                 # design mobile
+├── tests/pgn-validation.mjs       # test du collage d’une partie sans fichier
+├── index.html
+├── package.json
+└── vite.config.js
+```
+
+## Logique artistique actuelle
+
+- Les cases de départ et d’arrivée deviennent les coordonnées des traits.
+- Les Blancs et les Noirs utilisent deux familles de couleurs différentes.
+- Un bon coup produit une ligne régulière et lumineuse.
+- Une imprécision augmente le tremblement du trait.
+- Une erreur casse la trajectoire.
+- Une gaffe produit une rupture et des éclaboussures.
+- L’estimation de niveau modifie la précision globale du geste.
+- Les captures produisent des anneaux.
+- Les échecs produisent des rayons.
+- Le mat produit une explosion finale.
+- Les promotions produisent une étoile.
+
+Les seuils sont volontairement faciles à modifier dans `src/chess-analysis.js`.
+
+## Vie privée
+
+L’application est un site statique. Il n’y a :
+
+- aucun compte utilisateur ;
+- aucune base de données ;
+- aucun système d’analyse d’audience ;
+- aucun enregistrement automatique des PGN ;
+- aucun envoi de la partie à une API externe.
+
+L’hébergeur reçoit naturellement la requête nécessaire au téléchargement initial des fichiers du site. Ensuite, l’analyse Stockfish et la création de l’image sont réalisées localement sur l’appareil.
+
+## Licences
+
+Le projet est distribué sous **GNU GPL v3**.
+
+- Stockfish / Stockfish.js : GPL v3.
+- chess.js : BSD-2-Clause.
+- Vite et vite-plugin-pwa : MIT.
+
+Le fichier de licence de Stockfish est copié dans l’application lors de la construction.
+
+
+## Si l’application installée affiche encore l’ancienne version
+
+La PWA peut conserver une ancienne interface hors ligne. Vérifie le badge de version à côté du titre : il doit afficher **0.4**. Si ce n’est pas le cas, ferme complètement l’application, recharge la page GitHub Pages dans Chrome, puis rouvre l’application. En dernier recours, retire l’ancienne icône de l’écran d’accueil et réinstalle le site.
+
+
+## Diagnostic des boutons
+
+La version 0.6 contient une interface de secours intégrée directement dans `index.html`. Même si le module principal ne charge pas, les boutons **Effacer**, **Charger l’exemple** et **Coller le PGN** doivent réagir. Un message visible indique alors que GitHub Pages sert probablement les sources brutes. Dans **Settings → Pages**, la source doit être **GitHub Actions**, jamais **Deploy from a branch**.
