@@ -52,6 +52,36 @@ function mixColors(hexA, hexB, weight = 0.5) {
   return `rgb(${Math.round(a.r * (1 - weight) + b.r * weight)}, ${Math.round(a.g * (1 - weight) + b.g * weight)}, ${Math.round(a.b * (1 - weight) + b.b * weight)})`
 }
 
+
+function interpolateChannel(a, b, t) {
+  return Math.round(a + (b - a) * t)
+}
+
+function interpolateColors(hexA, hexB, t) {
+  const a = hexToRgb(hexA)
+  const b = hexToRgb(hexB)
+  return `rgb(${interpolateChannel(a.r, b.r, t)}, ${interpolateChannel(a.g, b.g, t)}, ${interpolateChannel(a.b, b.b, t)})`
+}
+
+function heatRampColor(intensity) {
+  const value = clamp(intensity, 0, 1)
+  const stops = [
+    { stop: 0, color: '#2dbb68' },
+    { stop: 0.33, color: '#d9d34a' },
+    { stop: 0.66, color: '#ef8d32' },
+    { stop: 1, color: '#d63a2f' },
+  ]
+  for (let index = 0; index < stops.length - 1; index += 1) {
+    const start = stops[index]
+    const end = stops[index + 1]
+    if (value >= start.stop && value <= end.stop) {
+      const localT = (value - start.stop) / (end.stop - start.stop)
+      return interpolateColors(start.color, end.color, localT)
+    }
+  }
+  return stops.at(-1).color
+}
+
 function squareToCoords(square) {
   const file = square.charCodeAt(0) - 97
   const rank = Number(square[1]) - 1
@@ -305,30 +335,28 @@ function drawClassic2D(ctx, data) {
     for (let rank = 0; rank < 8; rank += 1) {
       const { x, y, cx, cy } = cellRect(file, rank)
       const total = data.matrices.total[file][rank]
-      const white = data.matrices.white[file][rank]
-      const black = data.matrices.black[file][rank]
       const conflict = data.matrices.conflict[file][rank]
       const pressure = data.matrices.pressure[file][rank]
       const chaos = data.matrices.chaos[file][rank]
+      const intensity = clamp(total * 0.62 + conflict * 0.26 + pressure * 0.34 + chaos * 0.18, 0, 1)
+      if (intensity < 0.01) continue
 
-      const intensity = clamp(total * 0.5 + conflict * 0.28 + pressure * 0.36 + chaos * 0.2, 0, 1)
-      if (intensity < 0.02) continue
+      const color = heatRampColor(intensity)
+      ctx.fillStyle = withAlpha(color, 0.18 + intensity * 0.38)
+      ctx.fillRect(x + 3, y + 3, CELL - 6, CELL - 6)
 
-      const baseColor = white >= black
-        ? mixColors(WHITE_COLOR, BLACK_COLOR, 0.22)
-        : mixColors(BLACK_COLOR, WHITE_COLOR, 0.22)
-      const conflictMix = conflict + pressure > 0.55 ? CONFLICT_COLOR : baseColor
-      const color = pressure > 0.65 ? mixColors(conflictMix, PRESSURE_COLOR, 0.45) : conflictMix
-
-      const glow = ctx.createRadialGradient(cx, cy, 4, cx, cy, CELL * 0.72)
-      glow.addColorStop(0, withAlpha(color, 0.34 + intensity * 0.5))
-      glow.addColorStop(0.58, withAlpha(color, 0.12 + intensity * 0.15))
+      const glow = ctx.createRadialGradient(cx, cy, 3, cx, cy, CELL * 0.64)
+      glow.addColorStop(0, withAlpha(color, 0.16 + intensity * 0.34))
+      glow.addColorStop(0.55, withAlpha(color, 0.08 + intensity * 0.12))
       glow.addColorStop(1, withAlpha(color, 0))
       ctx.fillStyle = glow
       ctx.fillRect(x, y, CELL, CELL)
 
-      ctx.fillStyle = withAlpha(color, 0.08 + intensity * 0.18)
-      ctx.fillRect(x + 3, y + 3, CELL - 6, CELL - 6)
+      if (pressure > 0.45 || conflict > 0.35) {
+        ctx.strokeStyle = withAlpha(pressure > conflict ? PRESSURE_COLOR : CONFLICT_COLOR, 0.28 + intensity * 0.32)
+        ctx.lineWidth = 2
+        ctx.strokeRect(x + 7, y + 7, CELL - 14, CELL - 14)
+      }
     }
   }
 
@@ -338,60 +366,61 @@ function drawClassic2D(ctx, data) {
 function drawSoftBlob(ctx, x, y, radius, color, alpha = 0.2) {
   const gradient = ctx.createRadialGradient(x, y, 4, x, y, radius)
   gradient.addColorStop(0, withAlpha(color, alpha))
-  gradient.addColorStop(0.55, withAlpha(color, alpha * 0.42))
+  gradient.addColorStop(0.62, withAlpha(color, alpha * 0.55))
   gradient.addColorStop(1, withAlpha(color, 0))
   ctx.fillStyle = gradient
   ctx.fillRect(x - radius, y - radius, radius * 2, radius * 2)
 }
 
-function drawPainterly2D(ctx, data) {
-  drawBoardBase(ctx, 0.18)
-
+function drawBrushStroke(ctx, x, y, width, height, angle, color, alpha = 0.2) {
   ctx.save()
-  ctx.globalCompositeOperation = 'screen'
+  ctx.translate(x, y)
+  ctx.rotate(angle)
+  const gradient = ctx.createLinearGradient(-width / 2, 0, width / 2, 0)
+  gradient.addColorStop(0, withAlpha(color, 0))
+  gradient.addColorStop(0.18, withAlpha(color, alpha * 0.85))
+  gradient.addColorStop(0.5, withAlpha(color, alpha))
+  gradient.addColorStop(0.82, withAlpha(color, alpha * 0.75))
+  gradient.addColorStop(1, withAlpha(color, 0))
+  ctx.fillStyle = gradient
+  roundRect(ctx, -width / 2, -height / 2, width, height, Math.min(height, width) * 0.28)
+  ctx.fill()
+  ctx.restore()
+}
+
+function drawPainterly2D(ctx, data) {
+  drawBoardBase(ctx, 0.3)
+
   for (let file = 0; file < 8; file += 1) {
     for (let rank = 0; rank < 8; rank += 1) {
-      const { cx, cy } = cellRect(file, rank)
+      const { x, y, cx, cy } = cellRect(file, rank)
       const total = data.matrices.total[file][rank]
       const white = data.matrices.white[file][rank]
       const black = data.matrices.black[file][rank]
       const conflict = data.matrices.conflict[file][rank]
       const pressure = data.matrices.pressure[file][rank]
       const chaos = data.matrices.chaos[file][rank]
-      const intensity = clamp(total * 0.75 + conflict * 0.35 + pressure * 0.45 + chaos * 0.24, 0, 1)
-      if (intensity < 0.03) continue
+      const intensity = clamp(total * 0.72 + conflict * 0.32 + pressure * 0.42 + chaos * 0.22, 0, 1)
+      if (intensity < 0.02) continue
 
-      const mainColor = white > black ? WHITE_COLOR : BLACK_COLOR
-      drawSoftBlob(ctx, cx, cy, CELL * (0.6 + intensity * 0.75), mainColor, 0.16 + intensity * 0.18)
-      drawSoftBlob(ctx, cx + (white - black) * 16, cy + (black - white) * 12, CELL * (0.4 + intensity * 0.55), mixColors(mainColor, pressure > 0.5 ? PRESSURE_COLOR : CONFLICT_COLOR, 0.35), 0.11 + intensity * 0.12)
+      const mainColor = white >= black ? WHITE_COLOR : BLACK_COLOR
+      const accent = pressure > 0.46 ? PRESSURE_COLOR : conflict > 0.32 ? CONFLICT_COLOR : heatRampColor(intensity)
+      const angleBase = (file - rank) * 0.12
+
+      ctx.fillStyle = withAlpha(heatRampColor(intensity), 0.06 + intensity * 0.08)
+      ctx.fillRect(x + 2, y + 2, CELL - 4, CELL - 4)
+      drawSoftBlob(ctx, cx, cy, CELL * (0.34 + intensity * 0.24), mainColor, 0.08 + intensity * 0.08)
+      drawBrushStroke(ctx, cx, cy, CELL * (0.62 + intensity * 0.18), CELL * (0.13 + intensity * 0.04), angleBase, mainColor, 0.16 + intensity * 0.13)
+      drawBrushStroke(ctx, cx + (white - black) * 10, cy - (white - black) * 8, CELL * (0.44 + intensity * 0.12), CELL * 0.1, angleBase + 0.9, accent, 0.12 + intensity * 0.09)
+      if (intensity > 0.5) {
+        drawBrushStroke(ctx, cx - 6, cy + 6, CELL * 0.34, CELL * 0.08, angleBase - 0.72, mixColors(mainColor, '#ffffff', 0.18), 0.1 + intensity * 0.06)
+      }
     }
   }
-  ctx.restore()
 
   ctx.save()
-  for (let i = 0; i < data.eventSquares.length; i += 1) {
-    const event = data.eventSquares[i]
-    const { file, rank } = squareToCoords(event.square)
-    const { cx, cy } = cellRect(file, rank)
-    const color = event.type === 'capture'
-      ? CONFLICT_COLOR
-      : event.type === 'check' || event.type === 'mate'
-        ? PRESSURE_COLOR
-        : event.type === 'blunder' || event.type === 'mistake'
-          ? '#d98cff'
-          : '#91d7d0'
-    for (let layer = 0; layer < 3; layer += 1) {
-      const angle = (i * 0.8 + layer * 1.4)
-      const dx = Math.cos(angle) * (10 + layer * 9)
-      const dy = Math.sin(angle) * (8 + layer * 6)
-      drawSoftBlob(ctx, cx + dx, cy + dy, CELL * 0.22 * event.strength, color, 0.09)
-    }
-  }
-  ctx.restore()
-
-  ctx.save()
-  ctx.strokeStyle = 'rgba(255,255,255,0.06)'
-  ctx.lineWidth = 1.2
+  ctx.strokeStyle = 'rgba(255,255,255,0.08)'
+  ctx.lineWidth = 1
   for (let file = 0; file <= 8; file += 1) {
     const x = MARGIN + file * CELL
     ctx.beginPath(); ctx.moveTo(x, MARGIN); ctx.lineTo(x, MARGIN + BOARD_SIZE); ctx.stroke()
@@ -406,63 +435,48 @@ function drawPainterly2D(ctx, data) {
 }
 
 function drawRelief3D(ctx, data) {
-  const offsetX = 44
-  const offsetY = 36
-  ctx.save()
-  ctx.fillStyle = '#0d1017'
-  roundRect(ctx, MARGIN - 14 + offsetX, MARGIN - 14 + offsetY, BOARD_SIZE + 28, BOARD_SIZE + 28, 20)
-  ctx.fill()
-  drawBoardBase(ctx, 1)
+  drawBoardBase(ctx, 0.82)
 
   for (let file = 0; file < 8; file += 1) {
     for (let rank = 0; rank < 8; rank += 1) {
       const { x, y } = cellRect(file, rank)
       const total = data.matrices.total[file][rank]
-      const white = data.matrices.white[file][rank]
-      const black = data.matrices.black[file][rank]
       const conflict = data.matrices.conflict[file][rank]
       const pressure = data.matrices.pressure[file][rank]
       const chaos = data.matrices.chaos[file][rank]
-      const intensity = clamp(total * 0.72 + conflict * 0.28 + pressure * 0.42 + chaos * 0.18, 0, 1)
-      const height = 6 + intensity * 84
-      const baseColor = white >= black ? WHITE_COLOR : BLACK_COLOR
-      const topColor = pressure > 0.5
-        ? mixColors(baseColor, PRESSURE_COLOR, 0.45)
-        : conflict > 0.4
-          ? mixColors(baseColor, CONFLICT_COLOR, 0.35)
-          : baseColor
+      const intensity = clamp(total * 0.7 + conflict * 0.28 + pressure * 0.4 + chaos * 0.16, 0, 1)
+      const inset = 12
+      const width = CELL - inset * 2
+      const height = CELL - inset * 2
+      const lift = 4 + intensity * 34
+      const color = heatRampColor(intensity)
 
-      ctx.fillStyle = withAlpha('#05060a', 0.3)
-      ctx.fillRect(x + offsetX, y + offsetY, CELL, CELL)
-
-      ctx.fillStyle = mixColors(topColor, '#ffffff', 0.12)
-      ctx.fillRect(x, y - height, CELL, CELL)
-
-      ctx.fillStyle = mixColors(topColor, '#000000', 0.28)
-      ctx.beginPath()
-      ctx.moveTo(x + CELL, y - height)
-      ctx.lineTo(x + CELL + offsetX, y - height + offsetY)
-      ctx.lineTo(x + CELL + offsetX, y + CELL + offsetY)
-      ctx.lineTo(x + CELL, y + CELL)
-      ctx.closePath()
+      ctx.fillStyle = 'rgba(0,0,0,0.24)'
+      roundRect(ctx, x + inset + 6, y + inset + 10, width, height, 14)
       ctx.fill()
 
-      ctx.fillStyle = mixColors(topColor, '#000000', 0.16)
-      ctx.beginPath()
-      ctx.moveTo(x, y + CELL)
-      ctx.lineTo(x + CELL, y + CELL)
-      ctx.lineTo(x + CELL + offsetX, y + CELL + offsetY)
-      ctx.lineTo(x + offsetX, y + CELL + offsetY)
-      ctx.closePath()
+      const sideGradient = ctx.createLinearGradient(x + inset, y, x + inset, y + CELL)
+      sideGradient.addColorStop(0, withAlpha(mixColors(color, '#000000', 0.35), 0.95))
+      sideGradient.addColorStop(1, withAlpha(mixColors(color, '#000000', 0.58), 0.95))
+      ctx.fillStyle = sideGradient
+      roundRect(ctx, x + inset, y + inset + lift * 0.45, width, height, 14)
       ctx.fill()
 
-      if (pressure > 0.55) {
-        ctx.fillStyle = withAlpha(PRESSURE_COLOR, 0.2 + pressure * 0.25)
-        ctx.fillRect(x + 10, y - height + 10, CELL - 20, CELL - 20)
+      const topGradient = ctx.createLinearGradient(x, y + inset, x, y + inset + height)
+      topGradient.addColorStop(0, mixColors(color, '#ffffff', 0.2))
+      topGradient.addColorStop(1, mixColors(color, '#000000', 0.1))
+      ctx.fillStyle = topGradient
+      roundRect(ctx, x + inset, y + inset - lift, width, height, 14)
+      ctx.fill()
+
+      if (pressure > 0.45 || conflict > 0.35) {
+        ctx.strokeStyle = withAlpha(pressure > conflict ? PRESSURE_COLOR : CONFLICT_COLOR, 0.4 + intensity * 0.28)
+        ctx.lineWidth = 2
+        roundRect(ctx, x + inset + 6, y + inset - lift + 6, width - 12, height - 12, 10)
+        ctx.stroke()
       }
     }
   }
-  ctx.restore()
 
   drawEventMarkers(ctx, data, false)
 }
@@ -475,50 +489,42 @@ function drawEventMarkers(ctx, data, subtle) {
     const key = `${event.type}-${event.square}`
     const count = drawn.get(key) || 0
     drawn.set(key, count + 1)
-    const dx = (count % 3 - 1) * 14
-    const dy = Math.floor(count / 3) * 14 - 6
+    const dx = (count % 3 - 1) * 13
+    const dy = Math.floor(count / 3) * 13 - 5
     const x = cx + dx
     const y = cy + dy
 
     ctx.save()
-    ctx.lineWidth = subtle ? 1.5 : 2
+    ctx.lineWidth = subtle ? 1.8 : 2.4
+    ctx.lineCap = 'round'
+    ctx.lineJoin = 'round'
     switch (event.type) {
       case 'capture':
-        ctx.strokeStyle = withAlpha(CONFLICT_COLOR, subtle ? 0.55 : 0.9)
-        ctx.beginPath(); ctx.arc(x, y, 12, 0, Math.PI * 2); ctx.stroke()
+        ctx.strokeStyle = withAlpha(CONFLICT_COLOR, subtle ? 0.75 : 0.95)
+        ctx.beginPath(); ctx.moveTo(x - 8, y - 8); ctx.lineTo(x + 8, y + 8); ctx.moveTo(x + 8, y - 8); ctx.lineTo(x - 8, y + 8); ctx.stroke()
         break
       case 'check':
-        ctx.strokeStyle = withAlpha(PRESSURE_COLOR, subtle ? 0.58 : 0.92)
-        ctx.beginPath(); ctx.moveTo(x, y - 11); ctx.lineTo(x, y + 11); ctx.moveTo(x - 11, y); ctx.lineTo(x + 11, y); ctx.stroke()
+        ctx.strokeStyle = withAlpha(PRESSURE_COLOR, subtle ? 0.78 : 0.96)
+        ctx.beginPath(); ctx.moveTo(x, y - 11); ctx.lineTo(x + 4, y - 1); ctx.lineTo(x - 1, y - 1); ctx.lineTo(x + 2, y + 11); ctx.lineTo(x - 5, y + 2); ctx.lineTo(x, y + 2); ctx.stroke()
         break
       case 'mate':
-        ctx.strokeStyle = withAlpha(PRESSURE_COLOR, 0.95)
-        ctx.beginPath(); ctx.arc(x, y, 15, 0, Math.PI * 2); ctx.stroke()
-        ctx.beginPath(); ctx.moveTo(x - 9, y); ctx.lineTo(x + 9, y); ctx.moveTo(x, y - 9); ctx.lineTo(x, y + 9); ctx.stroke()
+        ctx.strokeStyle = withAlpha(PRESSURE_COLOR, 0.98)
+        ctx.beginPath(); ctx.arc(x, y, 13, 0, Math.PI * 2); ctx.stroke()
+        ctx.beginPath(); ctx.moveTo(x - 9, y - 9); ctx.lineTo(x + 9, y + 9); ctx.moveTo(x + 9, y - 9); ctx.lineTo(x - 9, y + 9); ctx.stroke()
         break
       case 'promotion':
-        ctx.fillStyle = withAlpha('#8de2d6', subtle ? 0.55 : 0.85)
-        ctx.beginPath()
-        for (let i = 0; i < 5; i += 1) {
-          const angle = -Math.PI / 2 + (i * Math.PI * 2) / 5
-          const outerX = x + Math.cos(angle) * 11
-          const outerY = y + Math.sin(angle) * 11
-          if (i === 0) ctx.moveTo(outerX, outerY)
-          else ctx.lineTo(outerX, outerY)
-          const innerAngle = angle + Math.PI / 5
-          ctx.lineTo(x + Math.cos(innerAngle) * 5, y + Math.sin(innerAngle) * 5)
-        }
-        ctx.closePath()
-        ctx.fill()
+        ctx.strokeStyle = withAlpha('#8de2d6', subtle ? 0.75 : 0.9)
+        ctx.beginPath(); ctx.moveTo(x, y + 10); ctx.lineTo(x, y - 10); ctx.moveTo(x, y - 10); ctx.lineTo(x - 6, y - 2); ctx.moveTo(x, y - 10); ctx.lineTo(x + 6, y - 2); ctx.stroke()
         break
       case 'blunder':
       case 'mistake':
-        ctx.strokeStyle = withAlpha('#cf8cff', subtle ? 0.5 : 0.8)
-        ctx.beginPath(); ctx.moveTo(x - 8, y - 8); ctx.lineTo(x + 8, y + 8); ctx.moveTo(x + 8, y - 8); ctx.lineTo(x - 8, y + 8); ctx.stroke()
+        ctx.strokeStyle = withAlpha('#cf8cff', subtle ? 0.68 : 0.86)
+        ctx.beginPath(); ctx.moveTo(x - 8, y + 8); ctx.lineTo(x - 2, y); ctx.lineTo(x + 1, y + 2); ctx.lineTo(x + 8, y - 8); ctx.stroke()
         break
       case 'sacrifice':
-        ctx.strokeStyle = withAlpha('#7ae0c4', subtle ? 0.5 : 0.82)
-        ctx.beginPath(); ctx.moveTo(x, y - 10); ctx.lineTo(x + 10, y); ctx.lineTo(x, y + 10); ctx.lineTo(x - 10, y); ctx.closePath(); ctx.stroke()
+        ctx.strokeStyle = withAlpha('#7ae0c4', subtle ? 0.7 : 0.88)
+        ctx.beginPath(); ctx.arc(x, y, 9, 0, Math.PI * 2); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(x, y - 6); ctx.lineTo(x, y + 6); ctx.moveTo(x - 6, y); ctx.lineTo(x + 6, y); ctx.stroke()
         break
       default:
         break
@@ -527,7 +533,7 @@ function drawEventMarkers(ctx, data, subtle) {
   }
 }
 
-function drawLegendAndTitle(ctx, analysis, description) {
+function drawLegendAndTitle(ctx, analysis, description, mode) {
   ctx.save()
   ctx.textAlign = 'left'
   ctx.fillStyle = 'rgba(255,255,255,0.92)'
@@ -541,14 +547,21 @@ function drawLegendAndTitle(ctx, analysis, description) {
   ctx.textAlign = 'right'
   ctx.fillStyle = 'rgba(255,255,255,0.82)'
   ctx.font = '16px Inter, Arial, sans-serif'
-  ctx.fillText('Présence', SIZE - MARGIN, 40)
+  ctx.fillText(mode === 'classic2d' || mode === 'relief3d' ? 'Activité' : 'Lecture', SIZE - MARGIN, 40)
 
-  const items = [
-    { label: 'Blancs', color: WHITE_COLOR },
-    { label: 'Noirs', color: BLACK_COLOR },
-    { label: 'Prises', color: CONFLICT_COLOR },
-    { label: 'Échecs / mat', color: PRESSURE_COLOR },
-  ]
+  const items = mode === 'classic2d' || mode === 'relief3d'
+    ? [
+      { label: 'Faible', color: '#2dbb68' },
+      { label: 'Moyen', color: '#d9d34a' },
+      { label: 'Fort', color: '#ef8d32' },
+      { label: 'Très fort', color: '#d63a2f' },
+    ]
+    : [
+      { label: 'Blancs', color: WHITE_COLOR },
+      { label: 'Noirs', color: BLACK_COLOR },
+      { label: 'Prises', color: CONFLICT_COLOR },
+      { label: 'Échecs / mat', color: PRESSURE_COLOR },
+    ]
   items.forEach((item, index) => {
     const x = SIZE - MARGIN - 260 + index * 64
     const y = 74
@@ -556,7 +569,8 @@ function drawLegendAndTitle(ctx, analysis, description) {
     ctx.beginPath(); ctx.arc(x, y, 9, 0, Math.PI * 2); ctx.fill()
     ctx.fillStyle = 'rgba(255,255,255,0.72)'
     ctx.font = '12px Inter, Arial, sans-serif'
-    ctx.fillText(item.label, x + 24, y + 4)
+    ctx.textAlign = 'left'
+    ctx.fillText(item.label, x + 14, y + 4)
   })
   ctx.restore()
 }
@@ -599,7 +613,7 @@ export function renderPainting(canvas, analysis, sourcePgn, options = {}) {
   else if (mode === 'relief3d') drawRelief3D(ctx, heatmapData)
   else drawPainterly2D(ctx, heatmapData)
 
-  drawLegendAndTitle(ctx, analysis, description)
+  drawLegendAndTitle(ctx, analysis, description, mode)
   drawFooter(ctx, description, heatmapData)
 
   return { heatmapData, description }
