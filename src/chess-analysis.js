@@ -19,6 +19,13 @@ const QUALITY_LABELS = {
   blunder: 'Gaffe',
 }
 
+const STARTING_PIECES = {
+  a1: 'r', b1: 'n', c1: 'b', d1: 'q', e1: 'k', f1: 'b', g1: 'n', h1: 'r',
+  a2: 'p', b2: 'p', c2: 'p', d2: 'p', e2: 'p', f2: 'p', g2: 'p', h2: 'p',
+  a7: 'p', b7: 'p', c7: 'p', d7: 'p', e7: 'p', f7: 'p', g7: 'p', h7: 'p',
+  a8: 'r', b8: 'n', c8: 'b', d8: 'q', e8: 'k', f8: 'b', g8: 'n', h8: 'r',
+}
+
 const OPENING_BOOK = [
   { id: 'ruy-lopez', label: 'Partie espagnole', family: 'Jeux ouverts', pattern: ['e4', 'e5', 'Nf3', 'Nc6', 'Bb5'], symbol: 'arch' },
   { id: 'italian', label: 'Partie italienne', family: 'Jeux ouverts', pattern: ['e4', 'e5', 'Nf3', 'Nc6', 'Bc4'], symbol: 'laurel' },
@@ -210,6 +217,125 @@ function detectMotifs(move, classification, moveIndex, moves) {
   if (recentChecks >= 2) motifs.push('attaque du roi')
 
   return motifs
+}
+
+function moveImportance(row, totalMoves) {
+  const quality = {
+    brilliant: 26,
+    best: 19,
+    excellent: 15,
+    good: 10,
+    inaccuracy: 7,
+    mistake: 16,
+    blunder: 22,
+  }[row.quality] || 8
+  const capturedValue = PIECE_VALUES[row.captured] || 0
+  const event = (row.captured ? 9 + capturedValue * 1.35 : 0)
+    + (row.motifs.includes('échec') ? 14 : 0)
+    + (row.motifs.includes('mat') ? 34 : 0)
+    + (row.motifs.includes('promotion') ? 24 : 0)
+    + (row.sacrifice ? 18 : 0)
+  const swing = Math.min(24, Math.sqrt(Math.max(0, row.cpLoss)) * 1.25)
+  const central = /[c-f][3-6]/.test(row.to) ? 5 : 0
+  const finale = row.index >= Math.max(0, totalMoves - 8) ? 6 : 0
+  return Math.round(Math.max(0, Math.min(100, quality + event + swing + central + finale)))
+}
+
+export function trackPieces(moves, rows = []) {
+  const board = new Map()
+  const pieces = []
+  const counters = { w: {}, b: {} }
+
+  for (const [square, type] of Object.entries(STARTING_PIECES)) {
+    const color = square[1] <= '2' ? 'w' : 'b'
+    counters[color][type] = (counters[color][type] || 0) + 1
+    const piece = {
+      id: `${color}${type}${counters[color][type]}`,
+      color,
+      type,
+      startType: type,
+      startSquare: square,
+      finalSquare: square,
+      moveCount: 0,
+      captures: 0,
+      materialCaptured: 0,
+      checks: 0,
+      wasCaptured: false,
+      moveOfCapture: null,
+      participatedInMate: false,
+      sacrificed: false,
+      importance: 0,
+      moveIndices: [],
+    }
+    pieces.push(piece)
+    board.set(square, piece)
+  }
+
+  const rowPieceIds = []
+  moves.forEach((move, index) => {
+    const piece = board.get(move.from)
+    if (!piece) return
+
+    let capturedSquare = move.to
+    if ((move.flags || '').includes('e')) {
+      capturedSquare = `${move.to[0]}${Number(move.to[1]) + (move.color === 'w' ? -1 : 1)}`
+    }
+    const captured = board.get(capturedSquare)
+    if (captured && captured.color !== piece.color) {
+      captured.wasCaptured = true
+      captured.moveOfCapture = index
+      captured.finalSquare = capturedSquare
+      board.delete(capturedSquare)
+      piece.captures += 1
+      piece.materialCaptured += PIECE_VALUES[captured.type] || 0
+    }
+
+    board.delete(move.from)
+    board.set(move.to, piece)
+    piece.finalSquare = move.to
+    piece.moveCount += 1
+    piece.moveIndices.push(index)
+    if (move.san.includes('+') || move.san.includes('#')) piece.checks += 1
+    if (move.san.includes('#')) piece.participatedInMate = true
+    if (move.promotion) piece.type = move.promotion
+
+    if ((move.flags || '').includes('k') || (move.flags || '').includes('q')) {
+      const kingSide = (move.flags || '').includes('k')
+      const rank = move.color === 'w' ? '1' : '8'
+      const rookFrom = `${kingSide ? 'h' : 'a'}${rank}`
+      const rookTo = `${kingSide ? 'f' : 'd'}${rank}`
+      const rook = board.get(rookFrom)
+      if (rook) {
+        board.delete(rookFrom)
+        board.set(rookTo, rook)
+        rook.finalSquare = rookTo
+        rook.moveCount += 1
+        rook.moveIndices.push(index)
+      }
+    }
+
+    rowPieceIds[index] = piece.id
+  })
+
+  for (const piece of pieces) {
+    const pieceRows = piece.moveIndices.map((index) => rows[index]).filter(Boolean)
+    const rowImpact = pieceRows.reduce((sum, row) => sum + (row.importance || 0), 0)
+    piece.sacrificed = piece.wasCaptured && pieceRows.some((row) => row.sacrifice)
+    piece.importance = Math.round(
+      piece.moveCount * 2.4
+      + piece.captures * 8
+      + piece.materialCaptured * 2.2
+      + piece.checks * 8
+      + (piece.participatedInMate ? 28 : 0)
+      + (piece.sacrificed ? 16 : 0)
+      + rowImpact * 0.12,
+    )
+  }
+
+  return {
+    pieces: pieces.sort((a, b) => b.importance - a.importance),
+    rowPieceIds,
+  }
 }
 
 function estimatePlayerLevel(rows, color) {
@@ -437,7 +563,7 @@ export async function analyzeGame({ pgn, engine, depth, signal, onProgress }) {
   const rows = parsed.moves.map((move, index) => {
     const classification = classifyMove(move, evaluations[index], evaluations[index + 1])
     const motifs = detectMotifs(move, classification, index, parsed.moves)
-    return {
+    const row = {
       index,
       moveNumber: Math.floor(index / 2) + 1,
       color: move.color,
@@ -456,6 +582,13 @@ export async function analyzeGame({ pgn, engine, depth, signal, onProgress }) {
       motifs,
       ...classification,
     }
+    row.importance = moveImportance(row, parsed.moves.length)
+    return row
+  })
+
+  const pieceTracking = trackPieces(parsed.moves, rows)
+  rows.forEach((row, index) => {
+    row.pieceId = pieceTracking.rowPieceIds[index] || `${row.color}${row.piece}`
   })
 
   const theme = determineTheme(rows, parsed.moves, evaluations, parsed.result)
@@ -474,6 +607,7 @@ export async function analyzeGame({ pgn, engine, depth, signal, onProgress }) {
   return {
     ...parsed,
     rows,
+    pieces: pieceTracking.pieces,
     evaluations,
     players: { white, black },
     theme,

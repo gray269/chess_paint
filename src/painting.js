@@ -1,17 +1,47 @@
-const SIZE = 1400
-const MARGIN = 110
+const SIZE = 1600
+const MARGIN = 118
 const BOARD_SIZE = SIZE - MARGIN * 2
 const CELL = BOARD_SIZE / 8
 
-const WHITE_COLOR = '#f2b661'
-const BLACK_COLOR = '#5f86d6'
-const CONFLICT_COLOR = '#e96f5b'
-const PRESSURE_COLOR = '#f4e39d'
-const CHAOS_COLOR = '#bb79ff'
-const PROMOTION_COLOR = '#79e5d6'
-const BOARD_DARK = '#161b25'
-const BOARD_LIGHT = '#202737'
-const LABEL_COLOR = '#cfc7b5'
+export const PALETTES = {
+  automatic: { label: 'Automatique' },
+  forest: {
+    label: 'Forêt humide', background: '#101b18', low: '#284f43', medium: '#7f9d58', high: '#d2a653', critical: '#d6684f', white: '#e9c875', black: '#4e9b8f', ink: '#f2ecda', shadow: '#07110f',
+  },
+  ocean: {
+    label: 'Océan nocturne', background: '#07182b', low: '#123c58', medium: '#168b9a', high: '#ef8d70', critical: '#f8eac0', white: '#eab86b', black: '#5f91d8', ink: '#eff7f3', shadow: '#030c16',
+  },
+  ember: {
+    label: 'Braise', background: '#1d1110', low: '#5a3024', medium: '#b25b32', high: '#e98a3a', critical: '#ffdc80', white: '#f3b668', black: '#b75a50', ink: '#fff0d8', shadow: '#0d0707',
+  },
+  storm: {
+    label: 'Orage violet', background: '#171326', low: '#332754', medium: '#6f4ea1', high: '#d45e86', critical: '#f2d36f', white: '#eda96b', black: '#6f82dc', ink: '#f4efff', shadow: '#0b0913',
+  },
+  mineral: {
+    label: 'Minéral', background: '#161b1d', low: '#324442', medium: '#77908a', high: '#b77658', critical: '#e9ddbf', white: '#d8bd84', black: '#6d8e91', ink: '#f0e9dc', shadow: '#0b0e0f',
+  },
+  dawn: {
+    label: 'Aube froide', background: '#202838', low: '#4e5d78', medium: '#9a87aa', high: '#e49b86', critical: '#f9e7c8', white: '#f1ba82', black: '#768ac1', ink: '#fff8ef', shadow: '#101520',
+  },
+  ink: {
+    label: 'Encre et or', background: '#0e1118', low: '#282e3a', medium: '#725e3d', high: '#c59a4a', critical: '#f5e4bb', white: '#d7aa55', black: '#65778f', ink: '#fff3d5', shadow: '#05070b',
+  },
+}
+
+const MODE_LABELS = {
+  painting: 'Œuvre picturale',
+  structure: 'Structure révélée',
+}
+
+const QUALITY_TEXTURE = {
+  brilliant: { width: 1.28, alpha: 0.98, jitter: 0.05 },
+  best: { width: 1.16, alpha: 0.92, jitter: 0.07 },
+  excellent: { width: 1.06, alpha: 0.86, jitter: 0.08 },
+  good: { width: 0.94, alpha: 0.72, jitter: 0.11 },
+  inaccuracy: { width: 0.86, alpha: 0.54, jitter: 0.22 },
+  mistake: { width: 1.03, alpha: 0.5, jitter: 0.35 },
+  blunder: { width: 1.15, alpha: 0.58, jitter: 0.48 },
+}
 
 function hashText(text) {
   let hash = 2166136261
@@ -33,703 +63,553 @@ function randomGenerator(seed) {
   }
 }
 
-function clamp(value, min, max) {
+function clamp(value, min = 0, max = 1) {
   return Math.max(min, Math.min(max, value))
-}
-
-function hexToRgb(hex) {
-  const value = hex.replace('#', '')
-  const bigint = Number.parseInt(value, 16)
-  return { r: (bigint >> 16) & 255, g: (bigint >> 8) & 255, b: bigint & 255 }
-}
-
-function withAlpha(hex, alpha) {
-  const { r, g, b } = hexToRgb(hex)
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`
-}
-
-function mixColors(hexA, hexB, weight = 0.5) {
-  const a = hexToRgb(hexA)
-  const b = hexToRgb(hexB)
-  return `rgb(${Math.round(a.r * (1 - weight) + b.r * weight)}, ${Math.round(a.g * (1 - weight) + b.g * weight)}, ${Math.round(a.b * (1 - weight) + b.b * weight)})`
-}
-
-function interpolateColors(hexA, hexB, t) {
-  return mixColors(hexA, hexB, clamp(t, 0, 1))
-}
-
-function squareToCoords(square) {
-  const file = square.charCodeAt(0) - 97
-  const rank = Number(square[1]) - 1
-  return { file, rank }
-}
-
-function squareName(file, rank) {
-  return `${String.fromCharCode(97 + file)}${rank + 1}`
-}
-
-function cellRect(file, rank) {
-  const x = MARGIN + file * CELL
-  const y = MARGIN + (7 - rank) * CELL
-  return { x, y, cx: x + CELL / 2, cy: y + CELL / 2 }
-}
-
-function qualityWeight(row) {
-  switch (row.quality) {
-    case 'brilliant': return 2.5
-    case 'best': return 2.1
-    case 'excellent': return 1.7
-    case 'good': return 1.25
-    case 'inaccuracy': return 1.1
-    case 'mistake': return 1.35
-    case 'blunder': return 1.8
-    default: return 1
-  }
 }
 
 function createMatrix(fill = 0) {
   return Array.from({ length: 8 }, () => Array(8).fill(fill))
 }
 
+function addToMatrix(matrix, file, rank, amount) {
+  if (file >= 0 && file < 8 && rank >= 0 && rank < 8) matrix[file][rank] += amount
+}
+
 function normalizeMatrix(matrix) {
-  const max = Math.max(...matrix.flat(), 0.0001)
-  return matrix.map((row) => row.map((value) => value / max))
+  const max = Math.max(...matrix.flat(), 1)
+  return matrix.map((column) => column.map((value) => value / max))
 }
 
 function sumMatrix(matrix) {
   return matrix.flat().reduce((sum, value) => sum + value, 0)
 }
 
-function addToMatrix(matrix, file, rank, value) {
-  matrix[file][rank] += value
+function squareToCoords(square) {
+  return { file: square.charCodeAt(0) - 97, rank: Number(square[1]) - 1 }
 }
 
-function heatRampColor(intensity) {
-  const value = clamp(intensity, 0, 1)
-  const stops = [
-    { stop: 0, color: '#31bf67' },
-    { stop: 0.35, color: '#e0d548' },
-    { stop: 0.68, color: '#f19a32' },
-    { stop: 1, color: '#dc4134' },
-  ]
-  for (let index = 0; index < stops.length - 1; index += 1) {
-    const start = stops[index]
-    const end = stops[index + 1]
-    if (value >= start.stop && value <= end.stop) {
-      const localT = (value - start.stop) / (end.stop - start.stop)
-      return interpolateColors(start.color, end.color, localT)
-    }
+function squareName(file, rank) {
+  return `${String.fromCharCode(97 + file)}${rank + 1}`
+}
+
+function squareCenter(square) {
+  const { file, rank } = squareToCoords(square)
+  return {
+    x: MARGIN + (file + 0.5) * CELL,
+    y: MARGIN + (7 - rank + 0.5) * CELL,
   }
-  return stops.at(-1).color
 }
 
-function viridisColor(intensity) {
-  const value = clamp(intensity, 0, 1)
-  const stops = [
-    { stop: 0, color: '#482878' },
-    { stop: 0.25, color: '#365c8d' },
-    { stop: 0.5, color: '#277f8e' },
-    { stop: 0.75, color: '#55c667' },
-    { stop: 1, color: '#fde725' },
-  ]
-  for (let index = 0; index < stops.length - 1; index += 1) {
-    const start = stops[index]
-    const end = stops[index + 1]
-    if (value >= start.stop && value <= end.stop) {
-      const localT = (value - start.stop) / (end.stop - start.stop)
-      return interpolateColors(start.color, end.color, localT)
-    }
-  }
-  return stops.at(-1).color
+function hexToRgb(hex) {
+  const normalized = hex.replace('#', '')
+  const value = Number.parseInt(normalized.length === 3 ? normalized.split('').map((item) => item + item).join('') : normalized, 16)
+  return { r: (value >> 16) & 255, g: (value >> 8) & 255, b: value & 255 }
 }
 
-function conflictRamp(intensity) {
-  const value = clamp(intensity, 0, 1)
-  const stops = [
-    { stop: 0, color: '#1a2030' },
-    { stop: 0.35, color: '#7f325f' },
-    { stop: 0.7, color: '#de5b43' },
-    { stop: 1, color: '#ffd166' },
-  ]
-  for (let index = 0; index < stops.length - 1; index += 1) {
-    const start = stops[index]
-    const end = stops[index + 1]
-    if (value >= start.stop && value <= end.stop) {
-      const localT = (value - start.stop) / (end.stop - start.stop)
-      return interpolateColors(start.color, end.color, localT)
-    }
-  }
-  return stops.at(-1).color
+function rgba(hex, alpha) {
+  const { r, g, b } = hexToRgb(hex)
+  return `rgba(${r}, ${g}, ${b}, ${clamp(alpha)})`
 }
 
-function pressureRamp(intensity) {
-  const value = clamp(intensity, 0, 1)
-  const stops = [
-    { stop: 0, color: '#17213a' },
-    { stop: 0.4, color: '#225b84' },
-    { stop: 0.75, color: '#37b3c8' },
-    { stop: 1, color: '#fff1a8' },
-  ]
-  for (let index = 0; index < stops.length - 1; index += 1) {
-    const start = stops[index]
-    const end = stops[index + 1]
-    if (value >= start.stop && value <= end.stop) {
-      const localT = (value - start.stop) / (end.stop - start.stop)
-      return interpolateColors(start.color, end.color, localT)
-    }
-  }
-  return stops.at(-1).color
+function mixColors(hexA, hexB, weight = 0.5) {
+  const a = hexToRgb(hexA)
+  const b = hexToRgb(hexB)
+  const w = clamp(weight)
+  const channel = (key) => Math.round(a[key] * (1 - w) + b[key] * w).toString(16).padStart(2, '0')
+  return `#${channel('r')}${channel('g')}${channel('b')}`
 }
 
-function combinedIntensity(matrices, file, rank) {
-  const { total, white, black, conflict, pressure, chaos } = matrices
-  return total[file][rank] + white[file][rank] + black[file][rank] + conflict[file][rank] * 1.3 + pressure[file][rank] * 1.5 + chaos[file][rank] * 1.15
+function choose(array, random) {
+  return array[Math.floor(random() * array.length)]
+}
+
+function choosePalette(analysis, requested, seed) {
+  if (requested && requested !== 'automatic' && PALETTES[requested]) return { id: requested, ...PALETTES[requested] }
+  const tactical = ['king-storm', 'sacrifice', 'chaos', 'counterstroke', 'center-clash'].includes(analysis.theme?.id)
+  const choices = tactical ? ['storm', 'ember', 'ocean', 'ink'] : ['forest', 'mineral', 'dawn', 'ocean', 'ink']
+  const id = choices[seed % choices.length]
+  return { id, ...PALETTES[id] }
+}
+
+function qualityWeight(row) {
+  return ({ brilliant: 1.45, best: 1.27, excellent: 1.15, good: 1, inaccuracy: 0.82, mistake: 1.08, blunder: 1.2 })[row.quality] || 1
 }
 
 export function buildHeatmapData(analysis) {
-  const total = createMatrix(0)
-  const white = createMatrix(0)
-  const black = createMatrix(0)
-  const conflict = createMatrix(0)
-  const pressure = createMatrix(0)
-  const chaos = createMatrix(0)
-  const visits = createMatrix(0)
-  const captures = createMatrix(0)
-  const checks = createMatrix(0)
-  const mates = createMatrix(0)
-  const promotions = createMatrix(0)
-  const mistakes = createMatrix(0)
-  const blunders = createMatrix(0)
-  const sacrifices = createMatrix(0)
-  const eventSquares = []
+  const total = createMatrix()
+  const white = createMatrix()
+  const black = createMatrix()
+  const conflict = createMatrix()
+  const pressure = createMatrix()
+  const chaos = createMatrix()
+  const visits = createMatrix()
+  const captures = createMatrix()
+  const checks = createMatrix()
+  const mates = createMatrix()
 
   for (const row of analysis.rows) {
     const from = squareToCoords(row.from)
     const to = squareToCoords(row.to)
-    const sideMatrix = row.color === 'w' ? white : black
-    const q = qualityWeight(row)
-
-    addToMatrix(total, from.file, from.rank, 0.35 * q)
-    addToMatrix(total, to.file, to.rank, 1.2 * q)
-    addToMatrix(sideMatrix, from.file, from.rank, 0.25 * q)
-    addToMatrix(sideMatrix, to.file, to.rank, 1.35 * q)
+    const side = row.color === 'w' ? white : black
+    const weight = qualityWeight(row)
+    addToMatrix(total, from.file, from.rank, 0.3 * weight)
+    addToMatrix(total, to.file, to.rank, 1.25 * weight)
+    addToMatrix(side, from.file, from.rank, 0.22 * weight)
+    addToMatrix(side, to.file, to.rank, 1.3 * weight)
     addToMatrix(visits, to.file, to.rank, 1)
-
     if (row.captured) {
-      addToMatrix(conflict, to.file, to.rank, 2.8 + q * 0.8)
-      addToMatrix(total, to.file, to.rank, 1.6)
+      addToMatrix(conflict, to.file, to.rank, 3 + weight)
       addToMatrix(captures, to.file, to.rank, 1)
-      eventSquares.push({ type: 'capture', square: row.to, strength: 1.8 + q * 0.35 })
     }
-    if (row.motifs.includes('échec')) {
-      addToMatrix(pressure, to.file, to.rank, 3.8 + q * 0.9)
+    if (row.motifs.includes('échec') || row.motifs.includes('mat')) {
+      addToMatrix(pressure, to.file, to.rank, row.motifs.includes('mat') ? 8 : 4)
       addToMatrix(checks, to.file, to.rank, 1)
-      eventSquares.push({ type: 'check', square: row.to, strength: 2.6 + q * 0.45 })
     }
-    if (row.motifs.includes('mat')) {
-      addToMatrix(pressure, to.file, to.rank, 7.5 + q)
-      addToMatrix(conflict, to.file, to.rank, 1.5)
-      addToMatrix(mates, to.file, to.rank, 1)
-      eventSquares.push({ type: 'mate', square: row.to, strength: 4.5 })
-    }
-    if (row.motifs.includes('promotion')) {
-      addToMatrix(pressure, to.file, to.rank, 2.6)
-      addToMatrix(total, to.file, to.rank, 1.4)
-      addToMatrix(promotions, to.file, to.rank, 1)
-      eventSquares.push({ type: 'promotion', square: row.to, strength: 2.2 })
-    }
+    if (row.motifs.includes('mat')) addToMatrix(mates, to.file, to.rank, 1)
     if (row.quality === 'mistake' || row.quality === 'blunder') {
-      addToMatrix(chaos, to.file, to.rank, row.quality === 'blunder' ? 3.2 : 1.9)
-      if (row.quality === 'blunder') addToMatrix(blunders, to.file, to.rank, 1)
-      else addToMatrix(mistakes, to.file, to.rank, 1)
-      eventSquares.push({ type: row.quality, square: row.to, strength: row.quality === 'blunder' ? 2.4 : 1.4 })
-    }
-    if (row.sacrifice) {
-      addToMatrix(conflict, to.file, to.rank, 2.1)
-      addToMatrix(pressure, to.file, to.rank, 1.2)
-      addToMatrix(sacrifices, to.file, to.rank, 1)
-      eventSquares.push({ type: 'sacrifice', square: row.to, strength: 2.5 })
+      addToMatrix(chaos, to.file, to.rank, row.quality === 'blunder' ? 3.4 : 2)
     }
   }
 
   const matrices = {
-    total: normalizeMatrix(total),
-    white: normalizeMatrix(white),
-    black: normalizeMatrix(black),
-    conflict: normalizeMatrix(conflict),
-    pressure: normalizeMatrix(pressure),
-    chaos: normalizeMatrix(chaos),
+    total: normalizeMatrix(total), white: normalizeMatrix(white), black: normalizeMatrix(black),
+    conflict: normalizeMatrix(conflict), pressure: normalizeMatrix(pressure), chaos: normalizeMatrix(chaos),
   }
-
-  const counts = { visits, captures, checks, mates, promotions, mistakes, blunders, sacrifices }
-
   const hotspots = []
   for (let file = 0; file < 8; file += 1) {
     for (let rank = 0; rank < 8; rank += 1) {
+      const intensity = matrices.total[file][rank]
+        + matrices.conflict[file][rank] * 1.2
+        + matrices.pressure[file][rank] * 1.45
+        + matrices.chaos[file][rank] * 0.8
       hotspots.push({
-        square: squareName(file, rank),
-        intensity: combinedIntensity(matrices, file, rank),
-        total: matrices.total[file][rank],
-        white: matrices.white[file][rank],
-        black: matrices.black[file][rank],
-        conflict: matrices.conflict[file][rank],
-        pressure: matrices.pressure[file][rank],
-        chaos: matrices.chaos[file][rank],
-        visits: visits[file][rank],
-        captureCount: captures[file][rank],
-        checkCount: checks[file][rank],
-        mateCount: mates[file][rank],
-        promotionCount: promotions[file][rank],
+        square: squareName(file, rank), intensity,
+        activity: matrices.total[file][rank], white: matrices.white[file][rank], black: matrices.black[file][rank],
+        conflict: matrices.conflict[file][rank], pressure: matrices.pressure[file][rank], chaos: matrices.chaos[file][rank],
+        visits: visits[file][rank], captureCount: captures[file][rank], checkCount: checks[file][rank], mateCount: mates[file][rank],
       })
     }
   }
   hotspots.sort((a, b) => b.intensity - a.intensity)
-
-  const centerSquares = new Set(['d4', 'e4', 'd5', 'e5', 'c4', 'f4', 'c5', 'f5'])
-  const centerTotal = hotspots.filter((entry) => centerSquares.has(entry.square)).reduce((sum, entry) => sum + entry.intensity, 0)
-  const totalEnergy = hotspots.reduce((sum, entry) => sum + entry.intensity, 0) || 1
-  const centerShare = Math.round((centerTotal / totalEnergy) * 100)
-
+  const centerSquares = new Set(['c4', 'd4', 'e4', 'f4', 'c5', 'd5', 'e5', 'f5'])
+  const totalEnergy = hotspots.reduce((sum, item) => sum + item.intensity, 0) || 1
+  const centerShare = Math.round(100 * hotspots.filter((item) => centerSquares.has(item.square)).reduce((sum, item) => sum + item.intensity, 0) / totalEnergy)
   const whitePressure = sumMatrix(white)
   const blackPressure = sumMatrix(black)
   const dominantSide = Math.abs(whitePressure - blackPressure) < 0.12 * (whitePressure + blackPressure)
-    ? 'Équilibre'
-    : whitePressure > blackPressure ? 'Blancs' : 'Noirs'
-
-  return {
-    matrices,
-    counts,
-    hotspots,
-    eventSquares,
-    centerShare,
-    dominantSide,
-    whitePressure,
-    blackPressure,
-  }
+    ? 'Équilibre' : whitePressure > blackPressure ? 'Blancs' : 'Noirs'
+  return { matrices, counts: { visits, captures, checks, mates }, hotspots, centerShare, dominantSide, whitePressure, blackPressure }
 }
 
-export function describeHeatmap(analysis, heatmapData, mode) {
-  const top = heatmapData.hotspots.slice(0, 3).map((entry) => entry.square)
-  const topConflict = [...heatmapData.hotspots]
-    .sort((a, b) => (b.conflict + b.pressure + b.chaos) - (a.conflict + a.pressure + a.chaos))
-    .slice(0, 2)
-    .map((entry) => entry.square)
-  const modeLabels = {
-    activity: 'Activité globale',
-    camps: 'Blancs vs Noirs',
-    conflicts: 'Conflits et captures',
-    pressure: 'Pression et échecs',
-    smoothed: 'Carte lissée',
-  }
-  const title = `Carte thermique — ${modeLabels[mode] || 'Analyse spatiale'}`
-  const commentary = [
-    `Les principaux hotspots sont ${top.join(', ')}.`,
-    `Le centre concentre environ ${heatmapData.centerShare} % de l’activité spatiale.`,
-    `La dynamique d’ensemble penche vers : ${heatmapData.dominantSide}.`,
-    topConflict.length ? `Les tensions les plus fortes apparaissent autour de ${topConflict.join(' et ')}.` : '',
-  ].filter(Boolean).join(' ')
-
+export function describeHeatmap(analysis, heatmapData, mode = 'painting') {
+  const hotspots = heatmapData.hotspots.slice(0, 3).map((entry) => entry.square)
   return {
-    title,
-    commentary,
-    modeLabel: modeLabels[mode] || 'Analyse spatiale',
+    title: analysis.artworkTitle || 'Empreinte de la partie',
+    commentary: `Les zones ${hotspots.join(', ')} structurent la matière. Le centre rassemble ${heatmapData.centerShare} % de l’énergie et la composition reste dominée par ${heatmapData.dominantSide.toLowerCase()}.`,
+    modeLabel: MODE_LABELS[mode] || MODE_LABELS.painting,
     dominantSide: heatmapData.dominantSide,
-    hotspots: top,
+    hotspots,
   }
 }
 
-function roundRect(ctx, x, y, width, height, radius) {
-  ctx.beginPath()
-  ctx.moveTo(x + radius, y)
-  ctx.arcTo(x + width, y, x + width, y + height, radius)
-  ctx.arcTo(x + width, y + height, x, y + height, radius)
-  ctx.arcTo(x, y + height, x, y, radius)
-  ctx.arcTo(x, y, x + width, y, radius)
-  ctx.closePath()
-}
-
-function drawBackground(ctx, random) {
-  const gradient = ctx.createLinearGradient(0, 0, 0, SIZE)
-  gradient.addColorStop(0, '#0c1018')
-  gradient.addColorStop(1, '#060910')
+function fillCanvas(ctx, palette, random) {
+  const gradient = ctx.createRadialGradient(SIZE * 0.44, SIZE * 0.38, SIZE * 0.06, SIZE * 0.5, SIZE * 0.5, SIZE * 0.78)
+  gradient.addColorStop(0, mixColors(palette.background, palette.low, 0.35))
+  gradient.addColorStop(0.62, palette.background)
+  gradient.addColorStop(1, palette.shadow)
   ctx.fillStyle = gradient
   ctx.fillRect(0, 0, SIZE, SIZE)
 
   ctx.save()
-  for (let i = 0; i < 2000; i += 1) {
-    const alpha = 0.004 + random() * 0.015
-    ctx.fillStyle = `rgba(255,255,255,${alpha})`
-    ctx.fillRect(random() * SIZE, random() * SIZE, 1 + random() * 2, 1 + random() * 2)
+  for (let index = 0; index < 4200; index += 1) {
+    const alpha = 0.008 + random() * 0.028
+    ctx.fillStyle = random() > 0.52 ? rgba(palette.ink, alpha) : rgba(palette.shadow, alpha * 1.6)
+    const x = random() * SIZE
+    const y = random() * SIZE
+    const length = 1 + random() * 9
+    ctx.fillRect(x, y, length, 0.7 + random())
   }
   ctx.restore()
 }
 
-function drawBoardBase(ctx, opacity = 1) {
-  ctx.save()
-  ctx.globalAlpha = opacity
-  ctx.fillStyle = '#0f1420'
-  roundRect(ctx, MARGIN - 18, MARGIN - 18, BOARD_SIZE + 36, BOARD_SIZE + 36, 24)
-  ctx.fill()
+function organicPath(ctx, cx, cy, radiusX, radiusY, random, vertices = 12) {
+  ctx.beginPath()
+  for (let index = 0; index <= vertices; index += 1) {
+    const angle = (index / vertices) * Math.PI * 2
+    const wobble = 0.83 + random() * 0.3
+    const x = cx + Math.cos(angle) * radiusX * wobble
+    const y = cy + Math.sin(angle) * radiusY * wobble
+    if (index === 0) ctx.moveTo(x, y)
+    else ctx.lineTo(x, y)
+  }
+  ctx.closePath()
+}
 
-  for (let file = 0; file < 8; file += 1) {
-    for (let rank = 0; rank < 8; rank += 1) {
-      const { x, y } = cellRect(file, rank)
-      ctx.fillStyle = (file + rank) % 2 === 0 ? BOARD_LIGHT : BOARD_DARK
-      ctx.fillRect(x, y, CELL, CELL)
+function geometryPath(ctx, family, cx, cy, radius, random) {
+  if (family === 'circles') {
+    ctx.beginPath()
+    ctx.ellipse(cx, cy, radius * (0.82 + random() * 0.3), radius * (0.82 + random() * 0.3), random() * Math.PI, 0, Math.PI * 2)
+  } else if (family === 'triangles') {
+    const rotation = random() * Math.PI * 2
+    ctx.beginPath()
+    for (let index = 0; index < 3; index += 1) {
+      const angle = rotation + index * Math.PI * 2 / 3
+      const x = cx + Math.cos(angle) * radius
+      const y = cy + Math.sin(angle) * radius
+      if (index === 0) ctx.moveTo(x, y)
+      else ctx.lineTo(x, y)
     }
+    ctx.closePath()
+  } else if (family === 'diamonds') {
+    ctx.beginPath()
+    ctx.moveTo(cx, cy - radius)
+    ctx.quadraticCurveTo(cx + radius * 0.16, cy - radius * 0.16, cx + radius, cy)
+    ctx.quadraticCurveTo(cx + radius * 0.16, cy + radius * 0.16, cx, cy + radius)
+    ctx.quadraticCurveTo(cx - radius * 0.16, cy + radius * 0.16, cx - radius, cy)
+    ctx.quadraticCurveTo(cx - radius * 0.16, cy - radius * 0.16, cx, cy - radius)
+  } else {
+    organicPath(ctx, cx, cy, radius * (0.88 + random() * 0.2), radius * (0.75 + random() * 0.35), random)
   }
-
-  ctx.strokeStyle = 'rgba(255,255,255,0.065)'
-  ctx.lineWidth = 1
-  for (let file = 0; file <= 8; file += 1) {
-    const x = MARGIN + file * CELL
-    ctx.beginPath(); ctx.moveTo(x, MARGIN); ctx.lineTo(x, MARGIN + BOARD_SIZE); ctx.stroke()
-  }
-  for (let rank = 0; rank <= 8; rank += 1) {
-    const y = MARGIN + rank * CELL
-    ctx.beginPath(); ctx.moveTo(MARGIN, y); ctx.lineTo(MARGIN + BOARD_SIZE, y); ctx.stroke()
-  }
-
-  ctx.fillStyle = LABEL_COLOR
-  ctx.font = '18px Inter, Arial, sans-serif'
-  ctx.textAlign = 'center'
-  ctx.textBaseline = 'middle'
-  for (let file = 0; file < 8; file += 1) {
-    const x = MARGIN + file * CELL + CELL / 2
-    ctx.fillText(String.fromCharCode(97 + file), x, MARGIN + BOARD_SIZE + 30)
-    ctx.fillText(String.fromCharCode(97 + file), x, MARGIN - 30)
-  }
-  for (let rank = 0; rank < 8; rank += 1) {
-    const y = MARGIN + (7 - rank) * CELL + CELL / 2
-    ctx.fillText(String(rank + 1), MARGIN - 30, y)
-    ctx.fillText(String(rank + 1), MARGIN + BOARD_SIZE + 30, y)
-  }
-  ctx.restore()
 }
 
-function drawCellShell(ctx, x, y, fillStyle, borderStyle = 'rgba(255,255,255,0.08)') {
+function backgroundColor(entry, palette) {
+  if (entry.mateCount) return palette.critical
+  if (entry.pressure > 0.55 || entry.conflict > 0.7) return mixColors(palette.high, palette.critical, 0.42)
+  if (entry.activity > 0.62) return palette.high
+  if (entry.activity > 0.28) return palette.medium
+  return palette.low
+}
+
+function drawHeatShapes(ctx, heatmap, palette, family, random, density) {
+  const densityFactor = density === 'airy' ? 0.82 : density === 'dense' ? 1.16 : 1
+  const ordered = [...heatmap.hotspots].sort((a, b) => a.activity - b.activity)
   ctx.save()
-  ctx.fillStyle = fillStyle
-  roundRect(ctx, x + 6, y + 6, CELL - 12, CELL - 12, 12)
-  ctx.fill()
-  ctx.strokeStyle = borderStyle
-  ctx.lineWidth = 1.5
-  ctx.stroke()
-  ctx.restore()
-}
-
-function drawBadge(ctx, x, y, text, color) {
-  if (!text || text === '0') return
-  const width = 12 + text.length * 8
-  ctx.save()
-  ctx.fillStyle = withAlpha(color, 0.18)
-  roundRect(ctx, x, y, width, 18, 8)
-  ctx.fill()
-  ctx.strokeStyle = withAlpha(color, 0.65)
-  ctx.lineWidth = 1
-  ctx.stroke()
-  ctx.fillStyle = color
-  ctx.font = '11px Inter, Arial, sans-serif'
-  ctx.textAlign = 'center'
-  ctx.textBaseline = 'middle'
-  ctx.fillText(text, x + width / 2, y + 9)
-  ctx.restore()
-}
-
-function drawValueText(ctx, cx, cy, value, sub, color = '#f7f5ef') {
-  ctx.save()
-  ctx.textAlign = 'center'
-  ctx.textBaseline = 'middle'
-  ctx.fillStyle = color
-  ctx.font = '700 26px Inter, Arial, sans-serif'
-  ctx.fillText(value, cx, cy - 6)
-  if (sub) {
-    ctx.fillStyle = 'rgba(255,255,255,0.7)'
-    ctx.font = '12px Inter, Arial, sans-serif'
-    ctx.fillText(sub, cx, cy + 18)
-  }
-  ctx.restore()
-}
-
-function drawMiniBalanceBar(ctx, x, y, width, whiteValue, blackValue) {
-  const total = Math.max(whiteValue + blackValue, 0.0001)
-  const whiteRatio = whiteValue / total
-  ctx.save()
-  ctx.fillStyle = 'rgba(255,255,255,0.08)'
-  roundRect(ctx, x, y, width, 8, 4)
-  ctx.fill()
-  ctx.fillStyle = withAlpha(WHITE_COLOR, 0.85)
-  roundRect(ctx, x, y, width * whiteRatio, 8, 4)
-  ctx.fill()
-  ctx.fillStyle = withAlpha(BLACK_COLOR, 0.85)
-  roundRect(ctx, x + width * whiteRatio, y, width * (1 - whiteRatio), 8, 4)
-  ctx.fill()
-  ctx.restore()
-}
-
-function getSquareMetrics(data, file, rank) {
-  const counts = data.counts
-  return {
-    activity: clamp(data.matrices.total[file][rank] * 0.7 + data.matrices.conflict[file][rank] * 0.2 + data.matrices.pressure[file][rank] * 0.25 + data.matrices.chaos[file][rank] * 0.15, 0, 1),
-    white: data.matrices.white[file][rank],
-    black: data.matrices.black[file][rank],
-    conflict: clamp(data.matrices.conflict[file][rank] + data.matrices.chaos[file][rank] * 0.35, 0, 1),
-    pressure: data.matrices.pressure[file][rank],
-    chaos: data.matrices.chaos[file][rank],
-    visits: counts.visits[file][rank],
-    captures: counts.captures[file][rank],
-    checks: counts.checks[file][rank],
-    mates: counts.mates[file][rank],
-    promotions: counts.promotions[file][rank],
-    mistakes: counts.mistakes[file][rank],
-    blunders: counts.blunders[file][rank],
-    sacrifices: counts.sacrifices[file][rank],
-  }
-}
-
-function drawActivityView(ctx, data) {
-  drawBoardBase(ctx, 1)
-  for (let file = 0; file < 8; file += 1) {
-    for (let rank = 0; rank < 8; rank += 1) {
-      const { x, y, cx, cy } = cellRect(file, rank)
-      const m = getSquareMetrics(data, file, rank)
-      const color = heatRampColor(m.activity)
-      const gradient = ctx.createLinearGradient(x, y, x, y + CELL)
-      gradient.addColorStop(0, withAlpha(mixColors(color, '#ffffff', 0.12), 0.95))
-      gradient.addColorStop(1, withAlpha(mixColors(color, '#000000', 0.22), 0.95))
-      drawCellShell(ctx, x, y, gradient, withAlpha(color, 0.45))
-
-      drawValueText(ctx, cx, cy, `${Math.round(m.activity * 100)}`, `${m.visits} passages`, '#ffffff')
-      drawMiniBalanceBar(ctx, x + 16, y + CELL - 24, CELL - 32, m.white, m.black)
-      drawBadge(ctx, x + 12, y + 10, `V${m.visits}`, '#bfc7d5')
-      if (m.captures) drawBadge(ctx, x + CELL - 54, y + 10, `x${m.captures}`, CONFLICT_COLOR)
-      if (m.checks || m.mates) drawBadge(ctx, x + CELL - 54, y + 32, `${m.mates ? '#' : '+'}${m.mates || m.checks}`, PRESSURE_COLOR)
-      if (m.blunders || m.mistakes) drawBadge(ctx, x + 12, y + 32, `!${m.blunders + m.mistakes}`, CHAOS_COLOR)
-    }
-  }
-}
-
-function drawCampsView(ctx, data) {
-  drawBoardBase(ctx, 1)
-  for (let file = 0; file < 8; file += 1) {
-    for (let rank = 0; rank < 8; rank += 1) {
-      const { x, y, cx, cy } = cellRect(file, rank)
-      const m = getSquareMetrics(data, file, rank)
-      drawCellShell(ctx, x, y, 'rgba(20,25,34,0.98)', 'rgba(255,255,255,0.08)')
-
-      ctx.save()
-      ctx.beginPath()
-      roundRect(ctx, x + 6, y + 6, CELL - 12, CELL - 12, 12)
-      ctx.clip()
-      ctx.fillStyle = withAlpha(WHITE_COLOR, 0.18 + m.white * 0.55)
-      ctx.fillRect(x + 6, y + 6, (CELL - 12) / 2, CELL - 12)
-      ctx.fillStyle = withAlpha(BLACK_COLOR, 0.18 + m.black * 0.55)
-      ctx.fillRect(x + CELL / 2, y + 6, (CELL - 12) / 2, CELL - 12)
-      ctx.restore()
-
-      const delta = Math.round((m.white - m.black) * 100)
-      drawValueText(ctx, cx, cy, delta === 0 ? '0' : `${delta > 0 ? '+' : ''}${delta}`, `${Math.round(m.white * 100)} / ${Math.round(m.black * 100)}`, '#ffffff')
-      drawBadge(ctx, x + 12, y + 10, `B ${Math.round(m.white * 100)}`, WHITE_COLOR)
-      drawBadge(ctx, x + CELL - 62, y + 10, `N ${Math.round(m.black * 100)}`, BLACK_COLOR)
-      if (m.activity > 0.55) drawBadge(ctx, x + 12, y + CELL - 30, `${Math.round(m.activity * 100)}`, heatRampColor(m.activity))
-    }
-  }
-}
-
-function drawConflictsView(ctx, data) {
-  drawBoardBase(ctx, 1)
-  for (let file = 0; file < 8; file += 1) {
-    for (let rank = 0; rank < 8; rank += 1) {
-      const { x, y, cx, cy } = cellRect(file, rank)
-      const m = getSquareMetrics(data, file, rank)
-      const eventScore = clamp(m.conflict * 0.8 + m.chaos * 0.4 + m.sacrifices * 0.15, 0, 1)
-      const color = conflictRamp(eventScore)
-      const gradient = ctx.createLinearGradient(x, y, x + CELL, y + CELL)
-      gradient.addColorStop(0, withAlpha(mixColors(color, '#ffffff', 0.1), 0.98))
-      gradient.addColorStop(1, withAlpha(mixColors(color, '#000000', 0.2), 0.98))
-      drawCellShell(ctx, x, y, gradient, withAlpha(color, 0.45))
-
-      const count = m.captures + m.sacrifices + m.mistakes + m.blunders
-      drawValueText(ctx, cx, cy, `${count}`, `${Math.round(eventScore * 100)} score`, '#fff7ee')
-      if (m.captures) drawBadge(ctx, x + 12, y + 10, `x${m.captures}`, CONFLICT_COLOR)
-      if (m.sacrifices) drawBadge(ctx, x + CELL - 54, y + 10, `s${m.sacrifices}`, '#86e2c6')
-      if (m.mistakes || m.blunders) drawBadge(ctx, x + 12, y + 32, `!${m.mistakes + m.blunders}`, CHAOS_COLOR)
-      if (m.checks) drawBadge(ctx, x + CELL - 54, y + 32, `+${m.checks}`, PRESSURE_COLOR)
-    }
-  }
-}
-
-function drawPressureView(ctx, data) {
-  drawBoardBase(ctx, 1)
-  for (let file = 0; file < 8; file += 1) {
-    for (let rank = 0; rank < 8; rank += 1) {
-      const { x, y, cx, cy } = cellRect(file, rank)
-      const m = getSquareMetrics(data, file, rank)
-      const color = pressureRamp(m.pressure)
-      const gradient = ctx.createRadialGradient(cx, cy - 8, 6, cx, cy, CELL * 0.7)
-      gradient.addColorStop(0, withAlpha(mixColors(color, '#ffffff', 0.12), 0.98))
-      gradient.addColorStop(1, withAlpha(mixColors(color, '#000000', 0.24), 0.98))
-      drawCellShell(ctx, x, y, gradient, withAlpha(color, 0.45))
-
-      const pressureValue = Math.round(m.pressure * 100)
-      const pressureLabel = m.mates ? `#${m.mates}` : m.checks ? `+${m.checks}` : `${pressureValue}`
-      drawValueText(ctx, cx, cy, pressureLabel, `${pressureValue} pression`, '#ffffff')
-      if (m.promotions) drawBadge(ctx, x + 12, y + 10, `^${m.promotions}`, PROMOTION_COLOR)
-      if (m.checks) drawBadge(ctx, x + CELL - 54, y + 10, `+${m.checks}`, PRESSURE_COLOR)
-      if (m.mates) drawBadge(ctx, x + CELL - 54, y + 32, `#${m.mates}`, '#fff6a7')
-      if (m.activity > 0.45) drawMiniBalanceBar(ctx, x + 16, y + CELL - 24, CELL - 32, m.white, m.black)
-    }
-  }
-}
-
-function drawSmoothedView(ctx, data) {
-  drawBoardBase(ctx, 0.22)
-  const step = 8
-  for (let py = MARGIN; py < MARGIN + BOARD_SIZE; py += step) {
-    for (let px = MARGIN; px < MARGIN + BOARD_SIZE; px += step) {
-      let value = 0
-      for (let file = 0; file < 8; file += 1) {
-        for (let rank = 0; rank < 8; rank += 1) {
-          const { cx, cy } = cellRect(file, rank)
-          const m = getSquareMetrics(data, file, rank)
-          const dx = px - cx
-          const dy = py - cy
-          const dist = Math.sqrt(dx * dx + dy * dy)
-          const gaussian = Math.exp(-(dist * dist) / (2 * (CELL * 0.72) ** 2))
-          value += (m.activity * 0.55 + m.conflict * 0.18 + m.pressure * 0.27) * gaussian
-        }
-      }
-      const intensity = clamp(value, 0, 1)
-      ctx.fillStyle = withAlpha(viridisColor(intensity), 0.94)
-      ctx.fillRect(px, py, step + 1, step + 1)
-    }
-  }
-
-  ctx.save()
-  ctx.strokeStyle = 'rgba(255,255,255,0.14)'
-  ctx.lineWidth = 1
-  for (let file = 0; file <= 8; file += 1) {
-    const x = MARGIN + file * CELL
-    ctx.beginPath(); ctx.moveTo(x, MARGIN); ctx.lineTo(x, MARGIN + BOARD_SIZE); ctx.stroke()
-  }
-  for (let rank = 0; rank <= 8; rank += 1) {
-    const y = MARGIN + rank * CELL
-    ctx.beginPath(); ctx.moveTo(MARGIN, y); ctx.lineTo(MARGIN + BOARD_SIZE, y); ctx.stroke()
-  }
-  ctx.restore()
-
-  for (let file = 0; file < 8; file += 1) {
-    for (let rank = 0; rank < 8; rank += 1) {
-      const { cx, cy } = cellRect(file, rank)
-      const m = getSquareMetrics(data, file, rank)
-      if (m.activity < 0.22) continue
-      ctx.save()
-      ctx.fillStyle = withAlpha('#081018', 0.6)
-      roundRect(ctx, cx - 20, cy - 14, 40, 28, 10)
+  for (const entry of ordered) {
+    const center = squareCenter(entry.square)
+    const intensity = clamp(entry.intensity / 2.4)
+    const layers = intensity > 0.72 ? 3 : intensity > 0.35 ? 2 : 1
+    for (let layer = 0; layer < layers; layer += 1) {
+      const radius = CELL * densityFactor * (0.2 + intensity * 0.36) * (1 - layer * 0.13)
+      const jitter = CELL * (0.02 + layer * 0.025)
+      const x = center.x + (random() - 0.5) * jitter
+      const y = center.y + (random() - 0.5) * jitter
+      const color = backgroundColor(entry, palette)
+      ctx.fillStyle = rgba(mixColors(color, palette.ink, layer * 0.05), 0.08 + intensity * 0.34 - layer * 0.045)
+      geometryPath(ctx, family, x, y, radius, random)
       ctx.fill()
-      ctx.fillStyle = '#ffffff'
-      ctx.font = '12px Inter, Arial, sans-serif'
-      ctx.textAlign = 'center'
-      ctx.textBaseline = 'middle'
-      ctx.fillText(`${Math.round(m.activity * 100)}`, cx, cy)
-      ctx.restore()
+      if (intensity > 0.55 && layer === 0) {
+        ctx.strokeStyle = rgba(color, 0.18 + intensity * 0.22)
+        ctx.lineWidth = 2 + intensity * 5
+        ctx.stroke()
+      }
     }
   }
+  ctx.restore()
 }
 
-function drawTitleAndLegend(ctx, analysis, description, mode) {
-  ctx.save()
-  ctx.fillStyle = 'rgba(255,255,255,0.94)'
-  ctx.font = '700 40px Inter, Arial, sans-serif'
-  ctx.textAlign = 'left'
-  ctx.fillText(description.title, MARGIN, 54)
-  ctx.fillStyle = 'rgba(255,255,255,0.66)'
-  ctx.font = '18px Inter, Arial, sans-serif'
-  ctx.fillText(`${analysis.headers.White || 'Blancs'} vs ${analysis.headers.Black || 'Noirs'} · ${analysis.opening?.label || 'Ouverture libre'} · ${analysis.result}`, MARGIN, 82)
-
-  const legendX = SIZE - MARGIN - 280
-  const legendY = 42
-  const legendWidth = 220
-  const legendHeight = 16
-  let colors = [heatRampColor(0), heatRampColor(0.35), heatRampColor(0.7), heatRampColor(1)]
-  let title = 'Activité'
-  let labels = ['faible', 'moyenne', 'forte']
-  if (mode === 'camps') {
-    colors = [WHITE_COLOR, mixColors(WHITE_COLOR, BLACK_COLOR, 0.5), BLACK_COLOR]
-    title = 'Dominance'
-    labels = ['Blancs', 'mixte', 'Noirs']
-  } else if (mode === 'conflicts') {
-    colors = [conflictRamp(0.1), conflictRamp(0.5), conflictRamp(1)]
-    title = 'Conflits'
-    labels = ['faibles', 'moyens', 'forts']
-  } else if (mode === 'pressure') {
-    colors = [pressureRamp(0.1), pressureRamp(0.6), pressureRamp(1)]
-    title = 'Pression'
-    labels = ['basse', 'moyenne', 'forte']
-  } else if (mode === 'smoothed') {
-    colors = [viridisColor(0), viridisColor(0.4), viridisColor(0.75), viridisColor(1)]
-    title = 'Champ lissé'
-    labels = ['faible', 'moyen', 'fort']
+function curveForMove(row, random) {
+  const start = squareCenter(row.from)
+  const end = squareCenter(row.to)
+  const dx = end.x - start.x
+  const dy = end.y - start.y
+  const distance = Math.hypot(dx, dy) || 1
+  const normalX = -dy / distance
+  const normalY = dx / distance
+  const bend = (random() - 0.5) * Math.min(CELL * 1.2, distance * 0.42)
+  const mistakeBend = ['mistake', 'blunder'].includes(row.quality) ? (random() - 0.5) * CELL * 0.75 : 0
+  return {
+    start, end,
+    c1: { x: start.x + dx * 0.32 + normalX * (bend + mistakeBend), y: start.y + dy * 0.32 + normalY * (bend + mistakeBend) },
+    c2: { x: start.x + dx * 0.7 + normalX * bend * 0.45, y: start.y + dy * 0.7 + normalY * bend * 0.45 },
   }
+}
 
-  ctx.textAlign = 'right'
-  ctx.fillStyle = 'rgba(255,255,255,0.84)'
-  ctx.font = '16px Inter, Arial, sans-serif'
-  ctx.fillText(title, legendX + legendWidth, legendY - 10)
+function strokePath(ctx, curve) {
+  ctx.beginPath()
+  ctx.moveTo(curve.start.x, curve.start.y)
+  ctx.bezierCurveTo(curve.c1.x, curve.c1.y, curve.c2.x, curve.c2.y, curve.end.x, curve.end.y)
+}
 
-  const gradient = ctx.createLinearGradient(legendX, legendY, legendX + legendWidth, legendY)
-  colors.forEach((color, index) => gradient.addColorStop(index / (colors.length - 1), color))
-  ctx.fillStyle = gradient
-  roundRect(ctx, legendX, legendY, legendWidth, legendHeight, 8)
-  ctx.fill()
-  ctx.strokeStyle = 'rgba(255,255,255,0.12)'
-  ctx.lineWidth = 1
+function paintStroke(ctx, row, palette, random, density) {
+  const texture = QUALITY_TEXTURE[row.quality] || QUALITY_TEXTURE.good
+  const importance = clamp((row.importance || 20) / 100)
+  const densityFactor = density === 'airy' ? 0.82 : density === 'dense' ? 1.14 : 1
+  const baseWidth = (9 + importance * 45) * texture.width * densityFactor
+  const sideColor = row.color === 'w' ? palette.white : palette.black
+  const color = row.motifs.includes('mat') ? palette.critical
+    : row.motifs.includes('échec') ? mixColors(sideColor, palette.critical, 0.42)
+      : row.captured ? mixColors(sideColor, palette.high, 0.34)
+        : ['mistake', 'blunder'].includes(row.quality) ? mixColors(sideColor, palette.shadow, 0.32)
+          : sideColor
+  const curve = curveForMove(row, random)
+
+  ctx.save()
+  ctx.lineCap = 'round'
+  ctx.lineJoin = 'round'
+  ctx.globalCompositeOperation = importance > 0.65 ? 'source-over' : 'screen'
+
+  ctx.shadowColor = rgba(color, 0.2 + importance * 0.28)
+  ctx.shadowBlur = 4 + importance * 17
+  ctx.strokeStyle = rgba(mixColors(color, palette.shadow, 0.22), texture.alpha * (0.25 + importance * 0.42))
+  ctx.lineWidth = baseWidth * 1.18
+  strokePath(ctx, curve)
   ctx.stroke()
 
-  ctx.font = '12px Inter, Arial, sans-serif'
-  ctx.fillStyle = 'rgba(255,255,255,0.64)'
-  ctx.textAlign = 'left'
-  ctx.fillText(labels[0], legendX, legendY + 30)
-  ctx.textAlign = 'center'
-  if (labels[1]) ctx.fillText(labels[1], legendX + legendWidth / 2, legendY + 30)
-  ctx.textAlign = 'right'
-  ctx.fillText(labels.at(-1), legendX + legendWidth, legendY + 30)
+  const bristles = density === 'airy' ? 4 : density === 'dense' ? 9 : 7
+  ctx.shadowBlur = 0
+  for (let index = 0; index < bristles; index += 1) {
+    const offset = (index - (bristles - 1) / 2) * baseWidth / bristles + (random() - 0.5) * baseWidth * texture.jitter
+    ctx.save()
+    ctx.translate(offset * 0.16, offset * 0.08)
+    ctx.strokeStyle = rgba(mixColors(color, index % 3 === 0 ? palette.ink : palette.shadow, index % 3 === 0 ? 0.16 : 0.08), texture.alpha * (0.18 + importance * 0.5) * (0.7 + random() * 0.3))
+    ctx.lineWidth = Math.max(1.5, baseWidth / bristles * (0.62 + random() * 0.7))
+    strokePath(ctx, curve)
+    ctx.stroke()
+    ctx.restore()
+  }
+
+  ctx.globalCompositeOperation = 'source-over'
+  if (row.captured || row.motifs.includes('échec') || row.motifs.includes('mat')) {
+    const count = row.motifs.includes('mat') ? 18 : row.captured ? 9 : 7
+    for (let index = 0; index < count; index += 1) {
+      const angle = random() * Math.PI * 2
+      const radius = baseWidth * (0.35 + random() * 1.35)
+      const dot = 2 + random() * baseWidth * 0.17
+      ctx.fillStyle = rgba(row.motifs.includes('mat') ? palette.critical : color, 0.24 + random() * 0.42)
+      ctx.beginPath()
+      ctx.arc(curve.end.x + Math.cos(angle) * radius, curve.end.y + Math.sin(angle) * radius, dot, 0, Math.PI * 2)
+      ctx.fill()
+    }
+  }
+  if (row.quality === 'blunder') {
+    ctx.strokeStyle = rgba(palette.shadow, 0.55)
+    ctx.lineWidth = Math.max(3, baseWidth * 0.1)
+    ctx.beginPath()
+    ctx.moveTo(curve.end.x - baseWidth * 0.38, curve.end.y - baseWidth * 0.36)
+    ctx.lineTo(curve.end.x + baseWidth * 0.38, curve.end.y + baseWidth * 0.36)
+    ctx.moveTo(curve.end.x + baseWidth * 0.34, curve.end.y - baseWidth * 0.4)
+    ctx.lineTo(curve.end.x - baseWidth * 0.34, curve.end.y + baseWidth * 0.4)
+    ctx.stroke()
+  }
   ctx.restore()
 }
 
-function drawFooter(ctx, description, heatmapData) {
+function drawSymbolGlyph(ctx, piece, theme, x, y, size, color) {
   ctx.save()
-  ctx.fillStyle = 'rgba(255,255,255,0.56)'
-  ctx.font = '16px Inter, Arial, sans-serif'
-  ctx.textAlign = 'left'
-  ctx.fillText(`Hotspots : ${description.hotspots.join(' · ')}`, MARGIN, SIZE - 42)
-  ctx.textAlign = 'right'
-  ctx.fillText(`Centre : ${heatmapData.centerShare} % · Domination : ${heatmapData.dominantSide}`, SIZE - MARGIN, SIZE - 42)
+  ctx.translate(x, y)
+  ctx.strokeStyle = color
+  ctx.fillStyle = rgba(color, 0.18)
+  ctx.lineWidth = Math.max(3, size * 0.055)
+  ctx.lineCap = 'round'
+  ctx.lineJoin = 'round'
+
+  if (theme === 'celestial') {
+    const rays = piece.type === 'q' ? 10 : piece.type === 'k' ? 8 : piece.type === 'n' ? 5 : 6
+    ctx.beginPath()
+    for (let index = 0; index < rays * 2; index += 1) {
+      const radius = index % 2 ? size * 0.22 : size * (piece.type === 'q' ? 0.5 : 0.4)
+      const angle = -Math.PI / 2 + index * Math.PI / rays
+      const px = Math.cos(angle) * radius
+      const py = Math.sin(angle) * radius
+      if (index === 0) ctx.moveTo(px, py)
+      else ctx.lineTo(px, py)
+    }
+    ctx.closePath()
+    ctx.fill()
+    ctx.stroke()
+    ctx.beginPath()
+    ctx.arc(0, 0, size * 0.13, 0, Math.PI * 2)
+    ctx.fillStyle = rgba(color, 0.72)
+    ctx.fill()
+  } else {
+    const sides = piece.type === 'p' ? 1 : piece.type === 'n' ? 3 : piece.type === 'b' ? 4 : piece.type === 'r' ? 6 : piece.type === 'q' ? 8 : 10
+    if (sides === 1) {
+      ctx.beginPath()
+      ctx.arc(0, -size * 0.1, size * 0.2, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.stroke()
+      ctx.beginPath()
+      ctx.moveTo(-size * 0.28, size * 0.38)
+      ctx.quadraticCurveTo(0, -size * 0.05, size * 0.28, size * 0.38)
+      ctx.stroke()
+    } else {
+      ctx.beginPath()
+      for (let index = 0; index < sides; index += 1) {
+        const angle = -Math.PI / 2 + index * Math.PI * 2 / sides
+        const radius = index % 2 ? size * 0.34 : size * 0.46
+        const px = Math.cos(angle) * radius
+        const py = Math.sin(angle) * radius
+        if (index === 0) ctx.moveTo(px, py)
+        else ctx.lineTo(px, py)
+      }
+      ctx.closePath()
+      ctx.fill()
+      ctx.stroke()
+      ctx.beginPath()
+      ctx.arc(0, 0, size * 0.12, 0, Math.PI * 2)
+      ctx.stroke()
+    }
+  }
+
+  if (piece.wasCaptured) {
+    ctx.globalCompositeOperation = 'destination-out'
+    ctx.fillStyle = '#000'
+    ctx.rotate(-0.55)
+    ctx.fillRect(-size * 0.05, -size * 0.55, size * 0.1, size * 1.1)
+    ctx.globalCompositeOperation = 'source-over'
+  }
   ctx.restore()
+}
+
+function placeSymbols(analysis, palette, theme, level, random) {
+  if (level === 'none') return []
+  const candidates = (analysis.pieces || []).filter((piece) => piece.moveCount > 0)
+  const limit = level === 'extended' ? 7 : 4
+  const selected = candidates.slice(0, limit)
+  const occupied = []
+  return selected.map((piece, index) => {
+    const anchor = squareCenter(piece.finalSquare)
+    const size = CELL * clamp(0.34 + piece.importance / 300, 0.38, 0.72)
+    const offsets = [
+      [0, 0], [CELL * 0.3, 0], [-CELL * 0.3, 0], [0, CELL * 0.3], [0, -CELL * 0.3],
+      [CELL * 0.25, CELL * 0.25], [-CELL * 0.25, -CELL * 0.25],
+    ]
+    let best = { x: anchor.x, y: anchor.y, cost: Infinity }
+    for (const [dx, dy] of offsets) {
+      const x = clamp(anchor.x + dx, MARGIN + size, SIZE - MARGIN - size)
+      const y = clamp(anchor.y + dy, MARGIN + size, SIZE - MARGIN - size)
+      const collision = occupied.reduce((sum, other) => sum + Math.max(0, (size + other.size) * 0.82 - Math.hypot(x - other.x, y - other.y)), 0)
+      const edge = x < MARGIN + size || x > SIZE - MARGIN - size || y < MARGIN + size || y > SIZE - MARGIN - size ? 1000 : 0
+      const cost = collision * 4 + edge + Math.hypot(dx, dy) * 0.1 + random() * 2
+      if (cost < best.cost) best = { x, y, size, cost }
+    }
+    occupied.push(best)
+    return { ...best, piece, theme, color: piece.color === 'w' ? palette.white : palette.black, rank: index + 1 }
+  })
+}
+
+function drawSymbols(ctx, placements, palette) {
+  for (const placement of placements.slice().reverse()) {
+    const { piece, x, y, size, color, theme } = placement
+    ctx.save()
+    ctx.shadowColor = rgba(palette.shadow, 0.55)
+    ctx.shadowBlur = 16
+    ctx.beginPath()
+    ctx.arc(x, y, size * 0.54, 0, Math.PI * 2)
+    ctx.fillStyle = rgba(palette.background, 0.44)
+    ctx.fill()
+    ctx.shadowBlur = 0
+    drawSymbolGlyph(ctx, piece, theme, x, y, size, color)
+    ctx.restore()
+  }
+}
+
+function drawStructureOverlay(ctx, heatmap, palette) {
+  ctx.save()
+  ctx.strokeStyle = rgba(palette.ink, 0.14)
+  ctx.lineWidth = 2
+  for (let index = 0; index <= 8; index += 1) {
+    const coordinate = MARGIN + index * CELL
+    ctx.beginPath()
+    ctx.moveTo(MARGIN, coordinate)
+    ctx.lineTo(SIZE - MARGIN, coordinate)
+    ctx.moveTo(coordinate, MARGIN)
+    ctx.lineTo(coordinate, SIZE - MARGIN)
+    ctx.stroke()
+  }
+  ctx.fillStyle = rgba(palette.ink, 0.58)
+  ctx.font = '22px Inter, Arial, sans-serif'
+  ctx.textAlign = 'center'
+  for (let file = 0; file < 8; file += 1) ctx.fillText(String.fromCharCode(97 + file), MARGIN + (file + 0.5) * CELL, SIZE - MARGIN + 38)
+  ctx.textAlign = 'right'
+  for (let rank = 0; rank < 8; rank += 1) ctx.fillText(String(rank + 1), MARGIN - 22, MARGIN + (7 - rank + 0.58) * CELL)
+  for (const hotspot of heatmap.hotspots.slice(0, 3)) {
+    const center = squareCenter(hotspot.square)
+    ctx.strokeStyle = rgba(palette.critical, 0.7)
+    ctx.lineWidth = 5
+    ctx.beginPath()
+    ctx.arc(center.x, center.y, CELL * 0.37, 0, Math.PI * 2)
+    ctx.stroke()
+  }
+  ctx.restore()
+}
+
+function drawFrameAndCaption(ctx, analysis, description, palette, placements) {
+  ctx.save()
+  ctx.strokeStyle = rgba(palette.ink, 0.12)
+  ctx.lineWidth = 2
+  ctx.strokeRect(32, 32, SIZE - 64, SIZE - 64)
+
+  const titleGradient = ctx.createLinearGradient(0, 0, SIZE, 0)
+  titleGradient.addColorStop(0, rgba(palette.shadow, 0.92))
+  titleGradient.addColorStop(0.7, rgba(palette.shadow, 0.72))
+  titleGradient.addColorStop(1, rgba(palette.shadow, 0.06))
+  ctx.fillStyle = titleGradient
+  ctx.fillRect(0, 0, SIZE, 96)
+  ctx.fillStyle = palette.ink
+  ctx.font = '600 40px Georgia, serif'
+  ctx.textAlign = 'left'
+  ctx.fillText(description.title, 64, 63, SIZE - 200)
+  ctx.font = '19px Inter, Arial, sans-serif'
+  ctx.fillStyle = rgba(palette.ink, 0.62)
+  const players = `${analysis.headers.White || 'Blancs'} × ${analysis.headers.Black || 'Noirs'} · ${analysis.opening?.label || 'Ouverture libre'} · ${analysis.result}`
+  ctx.fillText(players, 64, SIZE - 50, SIZE - 128)
+
+  if (placements.length) {
+    ctx.textAlign = 'right'
+    const names = placements.slice(0, 3).map(({ piece }) => `${piece.color === 'w' ? 'B' : 'N'}·${piece.type.toUpperCase()}`).join('  ')
+    ctx.fillText(`Figures : ${names}`, SIZE - 64, SIZE - 50)
+  }
+  ctx.restore()
+}
+
+function resolveFamily(requested, seed) {
+  if (requested && requested !== 'automatic') return requested
+  return ['organic', 'circles', 'triangles', 'diamonds'][seed % 4]
+}
+
+function resolveTheme(requested, analysis, seed) {
+  if (requested && requested !== 'automatic') return requested
+  if (['king-storm', 'promotion', 'counterstroke'].includes(analysis.theme?.id)) return 'celestial'
+  return seed % 3 === 0 ? 'celestial' : 'abstract'
 }
 
 export function renderPainting(canvas, analysis, sourcePgn, options = {}) {
-  const mode = options.mode || 'activity'
+  const mode = options.mode || 'painting'
+  const variation = Number(options.variation || 0)
+  const seed = hashText(`${sourcePgn}|paint-first-1.3|${variation}`)
+  const random = randomGenerator(seed)
+  const palette = choosePalette(analysis, options.palette || 'automatic', seed)
+  const family = resolveFamily(options.backgroundShape || 'automatic', seed)
+  const symbolTheme = resolveTheme(options.symbolTheme || 'automatic', analysis, seed)
+  const density = options.density || 'balanced'
+  const symbolLevel = options.symbolLevel || 'primary'
+  const heatmapData = buildHeatmapData(analysis)
+  const description = describeHeatmap(analysis, heatmapData, mode)
+
   canvas.width = SIZE
   canvas.height = SIZE
   const ctx = canvas.getContext('2d')
   ctx.clearRect(0, 0, SIZE, SIZE)
+  fillCanvas(ctx, palette, random)
+  drawHeatShapes(ctx, heatmapData, palette, family, random, density)
 
-  const heatmapData = buildHeatmapData(analysis)
-  const description = describeHeatmap(analysis, heatmapData, mode)
-  const random = randomGenerator(hashText(`${sourcePgn}|${mode}|v1.2`))
+  const strokes = [...analysis.rows].sort((a, b) => {
+    const layerA = a.motifs.includes('mat') ? 1000 : a.importance || 0
+    const layerB = b.motifs.includes('mat') ? 1000 : b.importance || 0
+    return layerA - layerB || a.index - b.index
+  })
+  for (const row of strokes) paintStroke(ctx, row, palette, random, density)
 
-  drawBackground(ctx, random)
-  if (mode === 'camps') drawCampsView(ctx, heatmapData)
-  else if (mode === 'conflicts') drawConflictsView(ctx, heatmapData)
-  else if (mode === 'pressure') drawPressureView(ctx, heatmapData)
-  else if (mode === 'smoothed') drawSmoothedView(ctx, heatmapData)
-  else drawActivityView(ctx, heatmapData)
+  const placements = placeSymbols(analysis, palette, symbolTheme, symbolLevel, random)
+  drawSymbols(ctx, placements, palette)
+  if (mode === 'structure') drawStructureOverlay(ctx, heatmapData, palette)
+  drawFrameAndCaption(ctx, analysis, description, palette, placements)
 
-  drawTitleAndLegend(ctx, analysis, description, mode)
-  drawFooter(ctx, description, heatmapData)
-
-  return { heatmapData, description }
+  return {
+    heatmapData, description, palette, family, symbolTheme, placements, variation,
+    strokeOrder: strokes.map((row) => row.index),
+  }
 }
 
 export function downloadPainting(canvas, filename = 'chess-paint.png') {
@@ -740,6 +620,6 @@ export function downloadPainting(canvas, filename = 'chess-paint.png') {
     link.href = url
     link.download = filename
     link.click()
-    URL.revokeObjectURL(url)
+    window.setTimeout(() => URL.revokeObjectURL(url), 0)
   }, 'image/png')
 }

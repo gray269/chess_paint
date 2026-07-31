@@ -5,17 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#15131c" />
     <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
-    <meta name="description" content="Transforme localement une partie d’échecs en analyse spatiale et carte thermique locale." />
-    <title>Chess Paint 1.2</title>
+    <meta name="description" content="Transforme localement une partie d’échecs en peinture procédurale guidée par Stockfish." />
+    <title>Chess Paint 1.3</title>
   </head>
   <body>
     <div id="app">
       <header class="hero">
         <div>
           <p class="eyebrow">Échecs × art génératif</p>
-          <h1>Chess Paint <span class="version-badge">1.2</span></h1>
+          <h1>Chess Paint <span class="version-badge">1.3</span></h1>
           <p class="hero-copy">
-            Colle une partie PGN : Stockfish l’analyse sur ton appareil, puis un algorithme la transforme en analyse spatiale riche, façon validation de données, avec plusieurs vues thermiques.
+            Chaque case devient une matière, chaque déplacement un geste de pinceau et les pièces décisives des figures symboliques. Toute l’œuvre est construite localement à partir de ta partie.
           </p>
         </div>
         <button id="installButton" class="button button-secondary" hidden>Installer l’application</button>
@@ -70,7 +70,7 @@
               </select>
             </label>
             <div class="button-row">
-              <button id="analyzeButton" class="button button-primary" disabled>Analyser et générer la vue</button>
+              <button id="analyzeButton" class="button button-primary" disabled>Analyser et peindre</button>
               <button id="stopButton" class="button button-secondary" disabled>Arrêter</button>
             </div>
           </div>
@@ -89,27 +89,69 @@
           <div class="section-heading">
             <div>
               <p class="step">02</p>
-              <h2>L’analyse spatiale de la partie</h2>
+              <h2>La peinture de la partie</h2>
             </div>
             <div class="artwork-actions">
               <label class="render-mode-label">
-                Vue
+                Lecture
                 <select id="renderModeSelect">
-                  <option value="activity" selected>Activité globale</option>
-                  <option value="camps">Blancs vs Noirs</option>
-                  <option value="conflicts">Conflits / captures</option>
-                  <option value="pressure">Pression / échecs</option>
-                  <option value="smoothed">Carte lissée</option>
+                  <option value="painting" selected>Œuvre picturale</option>
+                  <option value="structure">Révéler la structure</option>
                 </select>
               </label>
+              <button id="variationButton" class="button button-secondary" disabled>Nouvelle variation</button>
               <button id="downloadButton" class="button button-secondary" disabled>Exporter en PNG</button>
             </div>
+          </div>
+          <div class="art-controls" aria-label="Direction artistique">
+            <label>Palette
+              <select id="paletteSelect">
+                <option value="automatic">Automatique</option>
+                <option value="forest">Forêt humide</option>
+                <option value="ocean">Océan nocturne</option>
+                <option value="ember">Braise</option>
+                <option value="storm">Orage violet</option>
+                <option value="mineral">Minéral</option>
+                <option value="dawn">Aube froide</option>
+                <option value="ink">Encre et or</option>
+              </select>
+            </label>
+            <label>Formes du fond
+              <select id="shapeSelect">
+                <option value="automatic">Automatique</option>
+                <option value="organic">Formes organiques</option>
+                <option value="circles">Cercles et ellipses</option>
+                <option value="triangles">Triangles doux</option>
+                <option value="diamonds">Losanges souples</option>
+              </select>
+            </label>
+            <label>Univers symbolique
+              <select id="symbolThemeSelect">
+                <option value="automatic">Automatique</option>
+                <option value="abstract">Abstrait</option>
+                <option value="celestial">Céleste</option>
+              </select>
+            </label>
+            <label>Densité
+              <select id="densitySelect">
+                <option value="airy">Aérée</option>
+                <option value="balanced" selected>Équilibrée</option>
+                <option value="dense">Dense</option>
+              </select>
+            </label>
+            <label>Figures
+              <select id="symbolLevelSelect">
+                <option value="none">Aucune</option>
+                <option value="primary" selected>Pièces principales</option>
+                <option value="extended">Principales et secondaires</option>
+              </select>
+            </label>
           </div>
           <div class="canvas-shell">
             <canvas id="paintingCanvas" width="1200" height="1200"></canvas>
             <div id="canvasPlaceholder" class="canvas-placeholder">
               <span>♞</span>
-              <p>La vue thermique apparaîtra ici après l’analyse.</p>
+              <p>L’œuvre apparaîtra ici après l’analyse.</p>
             </div>
           </div>
         </section>
@@ -118,12 +160,12 @@
           <div class="section-heading">
             <div>
               <p class="step">03</p>
-              <h2>Lecture de l’analyse</h2>
+              <h2>Lecture de l’œuvre</h2>
             </div>
           </div>
           <div id="summaryCards" class="summary-grid"></div>
           <article class="commentary-card">
-            <p class="mini-label">Lecture spatiale</p>
+            <p class="mini-label">Lecture picturale</p>
             <h3 id="themeTitle"></h3>
             <p id="themeCommentary"></p>
           </article>

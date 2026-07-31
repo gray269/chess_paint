@@ -1,13 +1,17 @@
 # Chess Paint
 
-Version actuelle : **1.2.0**
+Version actuelle : **1.3.0 — Paint-first**
 
-**Chess Paint** transforme une partie d’échecs au format PGN en analyse spatiale locale : activité globale, comparaison Blancs/Noirs, conflits, pression et carte lissée.
+**Chess Paint** transforme une partie d’échecs au format PGN en peinture procédurale guidée par son analyse réelle.
 
 - Stockfish analyse chaque position directement dans le navigateur.
 - Les coups sont classés : brillant, meilleur, excellent, bon, imprécision, erreur ou gaffe.
 - Un niveau indicatif est calculé pour chaque joueur.
-- Les échecs, captures, promotions, sacrifices potentiels et erreurs influencent les points chauds, les tensions et les différentes vues analytiques.
+- Le fond est une heat map invisible composée de formes organiques ou géométriques : les cases les plus actives ressortent davantage.
+- Chaque déplacement devient un geste de pinceau. Les coups faibles sont peints en premier et les événements décisifs restent au premier plan.
+- Les pièces sont suivies individuellement ; seules les plus importantes deviennent des figures symboliques ancrées dans leurs zones réelles.
+- Sept palettes, quatre familles de fond, deux univers symboliques et trois densités peuvent être combinés.
+- Une nouvelle variation change la graine artistique sans relancer Stockfish ni modifier l’analyse.
 - Aucune IA générative ne produit l’image : le dessin vient uniquement d’un algorithme Canvas.
 - Le PGN et les résultats ne sont envoyés vers aucun serveur.
 - L’application peut être installée sur Android ou iPhone comme une PWA.
@@ -76,7 +80,8 @@ Après une première ouverture complète, le moteur et l’interface sont mis en
    - 12 : plus précis, mais plus long.
 4. Appuie sur le bouton **Analyser cette partie**. Coller le texte ne lance pas automatiquement Stockfish.
 5. Suis la progression affichée position par position.
-6. Exporte l’œuvre avec **Exporter en PNG**.
+6. Ajuste la palette, les formes, la densité et les figures, puis utilise **Nouvelle variation** si tu veux une autre interprétation.
+7. Exporte l’œuvre avec **Exporter en PNG**.
 
 La même partie, avec les mêmes paramètres, produit la même peinture.
 
@@ -110,7 +115,7 @@ chess-paint/
 ├── scripts/copy-stockfish.mjs    # copie du moteur depuis npm
 ├── src/
 │   ├── chess-analysis.js         # analyse et classification des coups
-│   ├── painting.js               # génération procédurale Canvas
+│   ├── painting.js               # moteur paint-first : heatmap, brosses, figures et composition
 │   ├── stockfish-engine.js       # communication UCI avec Stockfish
 │   ├── main.js                   # interface et événements
 │   └── style.css                 # design mobile
@@ -120,19 +125,15 @@ chess-paint/
 └── vite.config.js
 ```
 
-## Logique artistique actuelle
+## Logique artistique 1.3
 
-- Les cases de départ et d’arrivée deviennent les coordonnées des traits.
-- Les Blancs et les Noirs utilisent deux familles de couleurs différentes.
-- Un bon coup produit une ligne régulière et lumineuse.
-- Une imprécision augmente le tremblement du trait.
-- Une erreur casse la trajectoire.
-- Une gaffe produit une rupture et des éclaboussures.
-- L’estimation de niveau modifie la précision globale du geste.
-- Les captures produisent des anneaux.
-- Les échecs produisent des rayons.
-- Le mat produit une explosion finale.
-- Les promotions produisent une étoile.
+- La grille 8 × 8 structure l’image sans rester visible dans l’œuvre principale.
+- Taille, contraste, saturation et superposition des formes dépendent de l’activité et de la tension de chaque case.
+- L’importance d’un coup combine qualité, variation d’évaluation, capture, échec, mat, sacrifice, centralité et rôle dans la conclusion.
+- Les coups sont triés par importance avant le rendu : la narration décide réellement de la profondeur picturale.
+- Les captures déposent de la matière, les erreurs cassent le geste et le mat reste toujours au premier plan.
+- Le suivi individuel distingue par exemple les deux cavaliers d’un même camp et calcule l’importance propre de chaque pièce.
+- Le mode **Révéler la structure** superpose temporairement la grille et les trois hotspots sans modifier l’export pictural choisi.
 
 Les seuils sont volontairement faciles à modifier dans `src/chess-analysis.js`.
 
@@ -161,7 +162,7 @@ Le fichier de licence de Stockfish est copié dans l’application lors de la co
 
 ## Si l’application installée affiche encore l’ancienne version
 
-La PWA peut conserver une ancienne interface hors ligne. Vérifie le badge de version à côté du titre : il doit afficher **0.4**. Si ce n’est pas le cas, ferme complètement l’application, recharge la page GitHub Pages dans Chrome, puis rouvre l’application. En dernier recours, retire l’ancienne icône de l’écran d’accueil et réinstalle le site.
+La PWA peut conserver une ancienne interface hors ligne. Vérifie le badge de version à côté du titre : il doit afficher **1.3**. Si ce n’est pas le cas, ferme complètement l’application, recharge la page GitHub Pages dans Chrome, puis rouvre l’application. En dernier recours, retire l’ancienne icône de l’écran d’accueil et réinstalle le site.
 
 
 ## Diagnostic des boutons

@@ -16,7 +16,7 @@ export default defineConfig({
       manifest: {
         name: 'Chess Paint',
         short_name: 'Chess Paint',
-        description: 'Transforme une partie d’échecs en peinture procédurale.',
+        description: 'Transforme une partie d’échecs en peinture procédurale paint-first.',
         theme_color: '#15131c',
         background_color: '#0d0c11',
         display: 'standalone',

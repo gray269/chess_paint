@@ -31,6 +31,12 @@ const elements = {
   stopButton: document.querySelector('#stopButton'),
   downloadButton: document.querySelector('#downloadButton'),
   renderModeSelect: document.querySelector('#renderModeSelect'),
+  paletteSelect: document.querySelector('#paletteSelect'),
+  shapeSelect: document.querySelector('#shapeSelect'),
+  symbolThemeSelect: document.querySelector('#symbolThemeSelect'),
+  densitySelect: document.querySelector('#densitySelect'),
+  symbolLevelSelect: document.querySelector('#symbolLevelSelect'),
+  variationButton: document.querySelector('#variationButton'),
   installButton: document.querySelector('#installButton'),
   progressArea: document.querySelector('#progressArea'),
   progressBar: document.querySelector('#progressBar'),
@@ -56,6 +62,7 @@ let currentPgnInfo = null
 let currentRenderInfo = null
 let validationTimer = null
 let deferredInstallPrompt = null
+let variation = 0
 
 elements.pgnInput.value = ''
 
@@ -71,6 +78,11 @@ function setBusy(isBusy) {
   elements.exampleButton.disabled = isBusy
   elements.clearButton.disabled = isBusy
   elements.renderModeSelect.disabled = isBusy
+  elements.paletteSelect.disabled = isBusy
+  elements.shapeSelect.disabled = isBusy
+  elements.symbolThemeSelect.disabled = isBusy
+  elements.densitySelect.disabled = isBusy
+  elements.symbolLevelSelect.disabled = isBusy
   elements.progressArea.hidden = !isBusy
 }
 
@@ -87,7 +99,7 @@ function validatePgnInput({ announce = false } = {}) {
 
   if (!value) {
     setPgnValidation('empty', 'Aucune partie détectée', 'Colle le PGN dans la zone ci-dessus.')
-    elements.analyzeButton.textContent = 'Analyser et générer la carte'
+    elements.analyzeButton.textContent = 'Analyser et peindre'
     elements.analyzeButton.disabled = true
     return null
   }
@@ -108,7 +120,7 @@ function validatePgnInput({ announce = false } = {}) {
     return parsed
   } catch (error) {
     setPgnValidation('invalid', 'PGN non reconnu', error?.message || 'Le texte contient une erreur de notation.')
-    elements.analyzeButton.textContent = 'Analyser et générer la carte'
+    elements.analyzeButton.textContent = 'Analyser et peindre'
     elements.analyzeButton.disabled = true
     if (announce) elements.statusMessage.textContent = 'Le texte a été collé, mais il faut corriger le PGN avant l’analyse.'
     return null
@@ -159,9 +171,19 @@ function renderResults(analysis) {
 
   elements.summaryCards.innerHTML = [
     createSummaryCard(
-      'Vue actuelle',
+      'Lecture actuelle',
       heatmapDescription.modeLabel,
       `Points chauds : ${heatmapDescription.hotspots.join(', ')}` ,
+    ),
+    createSummaryCard(
+      'Direction artistique',
+      currentRenderInfo?.palette?.label || 'Automatique',
+      `${currentRenderInfo?.family || 'formes mixtes'} · univers ${currentRenderInfo?.symbolTheme || 'abstrait'}`,
+    ),
+    createSummaryCard(
+      'Figures principales',
+      `${currentRenderInfo?.placements?.length || 0} pièces`,
+      (currentRenderInfo?.placements || []).slice(0, 3).map(({ piece }) => `${piece.color === 'w' ? 'Blancs' : 'Noirs'} ${piece.type.toUpperCase()} (${piece.finalSquare})`).join(' · ') || 'Aucune figure affichée',
     ),
     createSummaryCard(
       'Centre',
@@ -191,7 +213,7 @@ function renderResults(analysis) {
   ].join('')
 
   elements.themeTitle.textContent = heatmapDescription.title
-  elements.themeCommentary.textContent = `${heatmapDescription.commentary} Ouverture reconnue : ${analysis.opening?.label || 'Ouverture libre'}. Thème détecté : ${analysis.theme.label}.`
+  elements.themeCommentary.textContent = `${heatmapDescription.commentary} Les mouvements faibles sont posés en premier ; les coups les plus importants, les captures, les échecs et le mat passent au premier plan. Ouverture : ${analysis.opening?.label || 'Ouverture libre'}. Thème détecté : ${analysis.theme.label}.`
 
   elements.movesTable.innerHTML = analysis.rows.map((row) => {
     const moveLabel = `${row.moveNumber}${row.color === 'w' ? '.' : '…'} ${row.san}`
@@ -269,12 +291,14 @@ async function startAnalysis() {
       onProgress: updateProgress,
     })
 
-    updateProgress({ current: 1, total: 1, message: 'Création de la carte thermique…' })
-    currentRenderInfo = renderPainting(elements.canvas, currentAnalysis, pgn, { mode: elements.renderModeSelect.value })
+    updateProgress({ current: 1, total: 1, message: 'Composition de la peinture…' })
+    variation = 0
+    currentRenderInfo = renderCurrentPainting()
     renderResults(currentAnalysis)
     elements.canvasPlaceholder.hidden = true
     elements.downloadButton.disabled = false
-    elements.statusMessage.textContent = 'Analyse terminée. La même partie produira toujours la même carte thermique.'
+    elements.variationButton.disabled = false
+    elements.statusMessage.textContent = 'Œuvre terminée. La même partie et la même variation produiront toujours la même peinture.'
   } catch (error) {
     if (error?.name === 'AbortError') {
       elements.statusMessage.textContent = 'Analyse interrompue.'
@@ -321,19 +345,42 @@ elements.stopButton.addEventListener('click', () => {
   engine?.stop()
 })
 
-elements.renderModeSelect.addEventListener('change', () => {
+function renderCurrentPainting() {
+  if (!currentAnalysis) return null
+  return renderPainting(elements.canvas, currentAnalysis, elements.pgnInput.value.trim(), {
+    mode: elements.renderModeSelect.value,
+    palette: elements.paletteSelect.value,
+    backgroundShape: elements.shapeSelect.value,
+    symbolTheme: elements.symbolThemeSelect.value,
+    density: elements.densitySelect.value,
+    symbolLevel: elements.symbolLevelSelect.value,
+    variation,
+  })
+}
+
+function refreshArtwork(message) {
   if (!currentAnalysis) return
-  const pgn = elements.pgnInput.value.trim()
-  currentRenderInfo = renderPainting(elements.canvas, currentAnalysis, pgn, { mode: elements.renderModeSelect.value })
+  currentRenderInfo = renderCurrentPainting()
   renderResults(currentAnalysis)
-  elements.statusMessage.textContent = `Vue mise à jour : ${elements.renderModeSelect.options[elements.renderModeSelect.selectedIndex].textContent}.`
+  elements.statusMessage.textContent = message
+}
+
+elements.renderModeSelect.addEventListener('change', () => refreshArtwork(`Lecture mise à jour : ${elements.renderModeSelect.options[elements.renderModeSelect.selectedIndex].textContent}.`))
+elements.paletteSelect.addEventListener('change', () => refreshArtwork('Palette appliquée à la composition.'))
+elements.shapeSelect.addEventListener('change', () => refreshArtwork('Famille de formes appliquée au fond.'))
+elements.symbolThemeSelect.addEventListener('change', () => refreshArtwork('Univers symbolique mis à jour.'))
+elements.densitySelect.addEventListener('change', () => refreshArtwork('Densité picturale mise à jour.'))
+elements.symbolLevelSelect.addEventListener('change', () => refreshArtwork('Présence des figures mise à jour.'))
+
+elements.variationButton.addEventListener('click', () => {
+  variation += 1
+  refreshArtwork(`Variation ${variation + 1} générée sans modifier l’analyse de la partie.`)
 })
 
 elements.downloadButton.addEventListener('click', () => {
   const title = currentAnalysis?.artworkTitle || `${currentAnalysis?.headers.White || 'blancs'}-${currentAnalysis?.headers.Black || 'noirs'}`
   const clean = String(title).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
-  const mode = elements.renderModeSelect.value
-  downloadPainting(elements.canvas, `chess-paint-${clean || 'oeuvre'}-${mode}.png`)
+  downloadPainting(elements.canvas, `chess-paint-${clean || 'oeuvre'}-variation-${variation + 1}.png`)
 })
 
 elements.pgnFile.addEventListener('change', async () => {
