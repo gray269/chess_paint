@@ -5,17 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#15131c" />
     <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
-    <meta name="description" content="Transforme localement une partie d’échecs en carte thermique artistique et peinture procédurale." />
-    <title>Chess Paint 1.1</title>
+    <meta name="description" content="Transforme localement une partie d’échecs en analyse spatiale et carte thermique locale." />
+    <title>Chess Paint 1.2</title>
   </head>
   <body>
     <div id="app">
       <header class="hero">
         <div>
           <p class="eyebrow">Échecs × art génératif</p>
-          <h1>Chess Paint <span class="version-badge">1.1</span></h1>
+          <h1>Chess Paint <span class="version-badge">1.2</span></h1>
           <p class="hero-copy">
-            Colle une partie PGN : Stockfish l’analyse sur ton appareil, puis un algorithme transforme la partie en carte thermique artistique vue du dessus — en 2D, en version fluide ou en relief.
+            Colle une partie PGN : Stockfish l’analyse sur ton appareil, puis un algorithme la transforme en analyse spatiale riche, façon validation de données, avec plusieurs vues thermiques.
           </p>
         </div>
         <button id="installButton" class="button button-secondary" hidden>Installer l’application</button>
@@ -70,7 +70,7 @@
               </select>
             </label>
             <div class="button-row">
-              <button id="analyzeButton" class="button button-primary" disabled>Analyser et générer la carte</button>
+              <button id="analyzeButton" class="button button-primary" disabled>Analyser et générer la vue</button>
               <button id="stopButton" class="button button-secondary" disabled>Arrêter</button>
             </div>
           </div>
@@ -89,15 +89,17 @@
           <div class="section-heading">
             <div>
               <p class="step">02</p>
-              <h2>La carte thermique de la partie</h2>
+              <h2>L’analyse spatiale de la partie</h2>
             </div>
             <div class="artwork-actions">
               <label class="render-mode-label">
                 Vue
                 <select id="renderModeSelect">
-                  <option value="classic2d">Heat map 2D</option>
-                  <option value="painterly2d" selected>Heat map fluide</option>
-                  <option value="relief3d">Heat map relief</option>
+                  <option value="activity" selected>Activité globale</option>
+                  <option value="camps">Blancs vs Noirs</option>
+                  <option value="conflicts">Conflits / captures</option>
+                  <option value="pressure">Pression / échecs</option>
+                  <option value="smoothed">Carte lissée</option>
                 </select>
               </label>
               <button id="downloadButton" class="button button-secondary" disabled>Exporter en PNG</button>
@@ -107,7 +109,7 @@
             <canvas id="paintingCanvas" width="1200" height="1200"></canvas>
             <div id="canvasPlaceholder" class="canvas-placeholder">
               <span>♞</span>
-              <p>La carte thermique apparaîtra ici après l’analyse.</p>
+              <p>La vue thermique apparaîtra ici après l’analyse.</p>
             </div>
           </div>
         </section>
@@ -116,7 +118,7 @@
           <div class="section-heading">
             <div>
               <p class="step">03</p>
-              <h2>Lecture de la carte</h2>
+              <h2>Lecture de l’analyse</h2>
             </div>
           </div>
           <div id="summaryCards" class="summary-grid"></div>

@@ -1,13 +1,13 @@
 # Chess Paint
 
-Version actuelle : **1.1.0**
+Version actuelle : **1.2.0**
 
-**Chess Paint** transforme une partie d’échecs au format PGN en une carte thermique artistique vue du dessus, avec plusieurs rendus procéduraux (2D, fluide, relief).
+**Chess Paint** transforme une partie d’échecs au format PGN en analyse spatiale locale : activité globale, comparaison Blancs/Noirs, conflits, pression et carte lissée.
 
 - Stockfish analyse chaque position directement dans le navigateur.
 - Les coups sont classés : brillant, meilleur, excellent, bon, imprécision, erreur ou gaffe.
 - Un niveau indicatif est calculé pour chaque joueur.
-- Les échecs, captures, promotions, sacrifices potentiels et erreurs influencent les points chauds, les tensions et le relief.
+- Les échecs, captures, promotions, sacrifices potentiels et erreurs influencent les points chauds, les tensions et les différentes vues analytiques.
 - Aucune IA générative ne produit l’image : le dessin vient uniquement d’un algorithme Canvas.
 - Le PGN et les résultats ne sont envoyés vers aucun serveur.
 - L’application peut être installée sur Android ou iPhone comme une PWA.
