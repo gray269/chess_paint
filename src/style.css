@@ -624,13 +624,74 @@ code {
 
 .art-controls {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
   margin: -4px 0 20px;
   padding: 16px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 18px;
   background: rgba(5, 5, 9, 0.22);
+}
+
+.hybrid-controls {
+  display: grid;
+  grid-template-columns: minmax(280px, 1fr) minmax(180px, 260px) auto;
+  align-items: center;
+  gap: 20px;
+  margin: 0 0 20px;
+  padding: 18px;
+  border: 1px solid rgba(244, 200, 117, 0.18);
+  border-radius: 18px;
+  background:
+    linear-gradient(135deg, rgba(244, 200, 117, 0.075), transparent 50%),
+    rgba(5, 5, 9, 0.24);
+}
+
+.hybrid-controls p {
+  margin-bottom: 7px;
+}
+
+.hybrid-controls strong,
+.hybrid-controls span {
+  display: block;
+}
+
+.hybrid-controls strong {
+  margin-bottom: 5px;
+  color: #f3ece4;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.08rem;
+  font-weight: 500;
+}
+
+.hybrid-controls span {
+  max-width: 660px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.hybrid-controls label {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 7px 12px;
+  align-items: center;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.hybrid-controls input[type="range"] {
+  grid-column: 1;
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+.hybrid-controls output {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  color: var(--accent-strong);
+  font-weight: 800;
 }
 
 .art-controls label {
@@ -653,6 +714,14 @@ code {
   .art-controls {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .hybrid-controls {
+    grid-template-columns: 1fr 220px;
+  }
+
+  .hybrid-controls .button {
+    grid-column: 1 / -1;
+  }
 }
 
 @media (max-width: 680px) {
@@ -670,5 +739,15 @@ code {
   .art-controls {
     grid-template-columns: 1fr;
     padding: 13px;
+  }
+
+  .hybrid-controls {
+    grid-template-columns: 1fr;
+    padding: 14px;
+  }
+
+  .hybrid-controls .button {
+    grid-column: auto;
+    width: 100%;
   }
 }

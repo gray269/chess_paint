@@ -1,6 +1,7 @@
 import './style.css'
 import { analyzeGame, normalizePgn, parsePgn } from './chess-analysis.js'
 import { buildHeatmapData, describeHeatmap, downloadPainting, renderPainting } from './painting.js'
+import { downloadAiFinishPack } from './ai-finish.js'
 import { StockfishEngine } from './stockfish-engine.js'
 
 window.__CHESS_PAINT_READY__ = true
@@ -31,11 +32,15 @@ const elements = {
   stopButton: document.querySelector('#stopButton'),
   downloadButton: document.querySelector('#downloadButton'),
   renderModeSelect: document.querySelector('#renderModeSelect'),
+  paintStyleSelect: document.querySelector('#paintStyleSelect'),
   paletteSelect: document.querySelector('#paletteSelect'),
   shapeSelect: document.querySelector('#shapeSelect'),
   symbolThemeSelect: document.querySelector('#symbolThemeSelect'),
   densitySelect: document.querySelector('#densitySelect'),
   symbolLevelSelect: document.querySelector('#symbolLevelSelect'),
+  aiStrengthRange: document.querySelector('#aiStrengthRange'),
+  aiStrengthOutput: document.querySelector('#aiStrengthOutput'),
+  aiPackButton: document.querySelector('#aiPackButton'),
   variationButton: document.querySelector('#variationButton'),
   installButton: document.querySelector('#installButton'),
   progressArea: document.querySelector('#progressArea'),
@@ -78,11 +83,14 @@ function setBusy(isBusy) {
   elements.exampleButton.disabled = isBusy
   elements.clearButton.disabled = isBusy
   elements.renderModeSelect.disabled = isBusy
+  elements.paintStyleSelect.disabled = isBusy
   elements.paletteSelect.disabled = isBusy
   elements.shapeSelect.disabled = isBusy
   elements.symbolThemeSelect.disabled = isBusy
   elements.densitySelect.disabled = isBusy
   elements.symbolLevelSelect.disabled = isBusy
+  elements.aiStrengthRange.disabled = isBusy
+  elements.aiPackButton.disabled = isBusy || !currentAnalysis
   elements.progressArea.hidden = !isBusy
 }
 
@@ -177,8 +185,8 @@ function renderResults(analysis) {
     ),
     createSummaryCard(
       'Direction artistique',
-      currentRenderInfo?.palette?.label || 'Automatique',
-      `${currentRenderInfo?.family || 'formes mixtes'} · univers ${currentRenderInfo?.symbolTheme || 'abstrait'}`,
+      currentRenderInfo?.paintStyleLabel || 'Automatique',
+      `${currentRenderInfo?.palette?.label || 'palette automatique'} · univers ${currentRenderInfo?.symbolTheme || 'abstrait'}`,
     ),
     createSummaryCard(
       'Figures principales',
@@ -298,6 +306,7 @@ async function startAnalysis() {
     elements.canvasPlaceholder.hidden = true
     elements.downloadButton.disabled = false
     elements.variationButton.disabled = false
+    elements.aiPackButton.disabled = false
     elements.statusMessage.textContent = 'Œuvre terminée. La même partie et la même variation produiront toujours la même peinture.'
   } catch (error) {
     if (error?.name === 'AbortError') {
@@ -349,6 +358,7 @@ function renderCurrentPainting() {
   if (!currentAnalysis) return null
   return renderPainting(elements.canvas, currentAnalysis, elements.pgnInput.value.trim(), {
     mode: elements.renderModeSelect.value,
+    paintStyle: elements.paintStyleSelect.value,
     palette: elements.paletteSelect.value,
     backgroundShape: elements.shapeSelect.value,
     symbolTheme: elements.symbolThemeSelect.value,
@@ -366,11 +376,51 @@ function refreshArtwork(message) {
 }
 
 elements.renderModeSelect.addEventListener('change', () => refreshArtwork(`Lecture mise à jour : ${elements.renderModeSelect.options[elements.renderModeSelect.selectedIndex].textContent}.`))
+elements.paintStyleSelect.addEventListener('change', () => refreshArtwork('Matière picturale appliquée à toute l’œuvre.'))
 elements.paletteSelect.addEventListener('change', () => refreshArtwork('Palette appliquée à la composition.'))
 elements.shapeSelect.addEventListener('change', () => refreshArtwork('Famille de formes appliquée au fond.'))
 elements.symbolThemeSelect.addEventListener('change', () => refreshArtwork('Univers symbolique mis à jour.'))
 elements.densitySelect.addEventListener('change', () => refreshArtwork('Densité picturale mise à jour.'))
 elements.symbolLevelSelect.addEventListener('change', () => refreshArtwork('Présence des figures mise à jour.'))
+
+elements.aiStrengthRange.addEventListener('input', () => {
+  elements.aiStrengthOutput.value = `${elements.aiStrengthRange.value} %`
+  elements.aiStrengthOutput.textContent = `${elements.aiStrengthRange.value} %`
+})
+
+elements.aiPackButton.addEventListener('click', async () => {
+  if (!currentAnalysis || !currentRenderInfo) return
+  elements.aiPackButton.disabled = true
+  elements.statusMessage.textContent = 'Préparation locale du pack de finition IA…'
+  try {
+    const aiOptions = {
+      mode: 'painting',
+      paintStyle: elements.paintStyleSelect.value,
+      palette: elements.paletteSelect.value,
+      backgroundShape: elements.shapeSelect.value,
+      symbolTheme: elements.symbolThemeSelect.value,
+      density: elements.densitySelect.value,
+      symbolLevel: elements.symbolLevelSelect.value,
+      variation,
+    }
+    const aiCanvas = document.createElement('canvas')
+    const aiRenderInfo = renderPainting(aiCanvas, currentAnalysis, elements.pgnInput.value.trim(), aiOptions)
+    await downloadAiFinishPack({
+      canvas: aiCanvas,
+      analysis: currentAnalysis,
+      sourcePgn: elements.pgnInput.value.trim(),
+      renderInfo: aiRenderInfo,
+      options: aiOptions,
+      strength: elements.aiStrengthRange.value,
+    })
+    elements.statusMessage.textContent = 'Pack IA exporté : image source, masque de préservation, manifeste et instructions. Aucune image n’a été envoyée.'
+  } catch (error) {
+    console.error(error)
+    elements.statusMessage.textContent = error?.message || 'Impossible de préparer le pack IA.'
+  } finally {
+    elements.aiPackButton.disabled = false
+  }
+})
 
 elements.variationButton.addEventListener('click', () => {
   variation += 1

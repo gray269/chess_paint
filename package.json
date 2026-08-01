@@ -1,9 +1,9 @@
 {
   "name": "chess-paint",
   "private": true,
-  "version": "1.3.0",
+  "version": "1.4.0",
   "type": "module",
-  "description": "Peinture procédurale générée localement à partir de l'analyse d'une partie d'échecs.",
+  "description": "Peinture d'échecs procédurale à matières picturales, univers narratifs et finition IA optionnelle.",
   "license": "GPL-3.0-only",
   "scripts": {
     "prepare:engine": "node scripts/copy-stockfish.mjs",
@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "chess.js": "1.4.0",
+    "jszip": "3.10.1",
     "stockfish": "18.0.8"
   },
   "devDependencies": {

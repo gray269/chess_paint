@@ -1,6 +1,6 @@
 # Chess Paint
 
-Version actuelle : **1.3.0 — Paint-first**
+Version actuelle : **1.4.0 — Matières picturales & pipeline hybride**
 
 **Chess Paint** transforme une partie d’échecs au format PGN en peinture procédurale guidée par son analyse réelle.
 
@@ -10,9 +10,11 @@ Version actuelle : **1.3.0 — Paint-first**
 - Le fond est une heat map invisible composée de formes organiques ou géométriques : les cases les plus actives ressortent davantage.
 - Chaque déplacement devient un geste de pinceau. Les coups faibles sont peints en premier et les événements décisifs restent au premier plan.
 - Les pièces sont suivies individuellement ; seules les plus importantes deviennent des figures symboliques ancrées dans leurs zones réelles.
-- Sept palettes, quatre familles de fond, deux univers symboliques et trois densités peuvent être combinés.
+- Cinq matières réellement différenciées : huile expressive, aquarelle organique, encre gestuelle, pastel poudreux et fresque ancienne.
+- Sept palettes, quatre familles de fond, six univers représentés et trois densités peuvent être combinés.
+- Le mode **Œuvre pure** retire tout texte, toute coordonnée et toute grille du PNG final.
 - Une nouvelle variation change la graine artistique sans relancer Stockfish ni modifier l’analyse.
-- Aucune IA générative ne produit l’image : le dessin vient uniquement d’un algorithme Canvas.
+- Une finition IA reste facultative : Chess Paint exporte un pack local avec la source, un masque de préservation et des instructions contrôlées.
 - Le PGN et les résultats ne sont envoyés vers aucun serveur.
 - L’application peut être installée sur Android ou iPhone comme une PWA.
 
@@ -80,8 +82,9 @@ Après une première ouverture complète, le moteur et l’interface sont mis en
    - 12 : plus précis, mais plus long.
 4. Appuie sur le bouton **Analyser cette partie**. Coller le texte ne lance pas automatiquement Stockfish.
 5. Suis la progression affichée position par position.
-6. Ajuste la palette, les formes, la densité et les figures, puis utilise **Nouvelle variation** si tu veux une autre interprétation.
+6. Ajuste la matière, l’univers, la palette, les formes, la densité et les figures, puis utilise **Nouvelle variation** si tu veux une autre interprétation.
 7. Exporte l’œuvre avec **Exporter en PNG**.
+8. Si tu veux une finition hybride, règle l’intensité puis choisis **Exporter le pack IA**. Aucun service d’IA n’est appelé par le site.
 
 La même partie, avec les mêmes paramètres, produit la même peinture.
 
@@ -116,6 +119,7 @@ chess-paint/
 ├── src/
 │   ├── chess-analysis.js         # analyse et classification des coups
 │   ├── painting.js               # moteur paint-first : heatmap, brosses, figures et composition
+│   ├── ai-finish.js               # pack hybride : source, masque, manifeste et consignes
 │   ├── stockfish-engine.js       # communication UCI avec Stockfish
 │   ├── main.js                   # interface et événements
 │   └── style.css                 # design mobile
@@ -125,7 +129,7 @@ chess-paint/
 └── vite.config.js
 ```
 
-## Logique artistique 1.3
+## Logique artistique 1.4
 
 - La grille 8 × 8 structure l’image sans rester visible dans l’œuvre principale.
 - Taille, contraste, saturation et superposition des formes dépendent de l’activité et de la tension de chaque case.
@@ -134,6 +138,19 @@ chess-paint/
 - Les captures déposent de la matière, les erreurs cassent le geste et le mat reste toujours au premier plan.
 - Le suivi individuel distingue par exemple les deux cavaliers d’un même camp et calcule l’importance propre de chaque pièce.
 - Le mode **Révéler la structure** superpose temporairement la grille et les trois hotspots sans modifier l’export pictural choisi.
+
+## Pipeline hybride
+
+L’algorithme reste l’auteur de la composition. Il choisit les trajectoires, les couches, les hotspots, les pièces importantes, la palette et l’univers. L’IA éventuelle ne reçoit qu’un rôle de finition de matière.
+
+Le bouton **Exporter le pack IA** crée un ZIP contenant :
+
+- `source-algorithmique.png` : l’œuvre telle qu’elle apparaît dans Chess Paint ;
+- `preserve-mask.png` : les zones importantes à conserver ;
+- `manifest.json` : paramètres, palette, hotspots et consignes structurées ;
+- `INSTRUCTIONS.txt` : prompt et réglage conseillé.
+
+L’archive est construite dans le navigateur. Chess Paint n’envoie ni l’image, ni le PGN, ni le masque à un serveur. L’utilisateur choisit ensuite librement son outil de stylisation.
 
 Les seuils sont volontairement faciles à modifier dans `src/chess-analysis.js`.
 
@@ -162,7 +179,7 @@ Le fichier de licence de Stockfish est copié dans l’application lors de la co
 
 ## Si l’application installée affiche encore l’ancienne version
 
-La PWA peut conserver une ancienne interface hors ligne. Vérifie le badge de version à côté du titre : il doit afficher **1.3**. Si ce n’est pas le cas, ferme complètement l’application, recharge la page GitHub Pages dans Chrome, puis rouvre l’application. En dernier recours, retire l’ancienne icône de l’écran d’accueil et réinstalle le site.
+La PWA peut conserver une ancienne interface hors ligne. Vérifie le badge de version à côté du titre : il doit afficher **1.4**. Si ce n’est pas le cas, ferme complètement l’application, recharge la page GitHub Pages dans Chrome, puis rouvre l’application. En dernier recours, retire l’ancienne icône de l’écran d’accueil et réinstalle le site.
 
 
 ## Diagnostic des boutons

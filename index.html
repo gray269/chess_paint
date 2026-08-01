@@ -6,16 +6,16 @@
     <meta name="theme-color" content="#15131c" />
     <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
     <meta name="description" content="Transforme localement une partie d’échecs en peinture procédurale guidée par Stockfish." />
-    <title>Chess Paint 1.3</title>
+    <title>Chess Paint 1.4</title>
   </head>
   <body>
     <div id="app">
       <header class="hero">
         <div>
           <p class="eyebrow">Échecs × art génératif</p>
-          <h1>Chess Paint <span class="version-badge">1.3</span></h1>
+          <h1>Chess Paint <span class="version-badge">1.4</span></h1>
           <p class="hero-copy">
-            Chaque case devient une matière, chaque déplacement un geste de pinceau et les pièces décisives des figures symboliques. Toute l’œuvre est construite localement à partir de ta partie.
+            La partie construit la composition ; la matière picturale la transforme en œuvre. Huile, aquarelle, encre, pastel ou fresque, avec une finition IA facultative et contrôlée.
           </p>
         </div>
         <button id="installButton" class="button button-secondary" hidden>Installer l’application</button>
@@ -95,7 +95,8 @@
               <label class="render-mode-label">
                 Lecture
                 <select id="renderModeSelect">
-                  <option value="painting" selected>Œuvre picturale</option>
+                  <option value="painting" selected>Œuvre pure — sans texte</option>
+                  <option value="caption">Œuvre avec cartel</option>
                   <option value="structure">Révéler la structure</option>
                 </select>
               </label>
@@ -104,6 +105,16 @@
             </div>
           </div>
           <div class="art-controls" aria-label="Direction artistique">
+            <label>Matière picturale
+              <select id="paintStyleSelect">
+                <option value="automatic">Automatique</option>
+                <option value="oil" selected>Huile expressive</option>
+                <option value="watercolor">Aquarelle organique</option>
+                <option value="inkwash">Encre gestuelle</option>
+                <option value="pastel">Pastel poudreux</option>
+                <option value="fresco">Fresque ancienne</option>
+              </select>
+            </label>
             <label>Palette
               <select id="paletteSelect">
                 <option value="automatic">Automatique</option>
@@ -125,11 +136,15 @@
                 <option value="diamonds">Losanges souples</option>
               </select>
             </label>
-            <label>Univers symbolique
+            <label>Univers représenté
               <select id="symbolThemeSelect">
                 <option value="automatic">Automatique</option>
                 <option value="abstract">Abstrait</option>
                 <option value="celestial">Céleste</option>
+                <option value="oceanic">Océan</option>
+                <option value="botanical">Forêt</option>
+                <option value="tempest">Tempête</option>
+                <option value="cartography">Cartographie ancienne</option>
               </select>
             </label>
             <label>Densité
@@ -146,6 +161,18 @@
                 <option value="extended">Principales et secondaires</option>
               </select>
             </label>
+          </div>
+          <div class="hybrid-controls" aria-label="Finition hybride">
+            <div>
+              <p class="mini-label">Finition hybride facultative</p>
+              <strong>L’algorithme garde la composition ; l’IA ne retravaille que la matière.</strong>
+              <span>Le projet fonctionne entièrement sans IA. Le pack exporté contient l’image source, un masque de préservation et les instructions de stylisation.</span>
+            </div>
+            <label>Intensité IA conseillée
+              <input id="aiStrengthRange" type="range" min="10" max="50" value="28" step="1" />
+              <output id="aiStrengthOutput" for="aiStrengthRange">28 %</output>
+            </label>
+            <button id="aiPackButton" class="button button-secondary" disabled>Exporter le pack IA</button>
           </div>
           <div class="canvas-shell">
             <canvas id="paintingCanvas" width="1200" height="1200"></canvas>

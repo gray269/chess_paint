@@ -29,8 +29,18 @@ export const PALETTES = {
 }
 
 const MODE_LABELS = {
-  painting: 'Œuvre picturale',
+  painting: 'Œuvre pure',
+  caption: 'Œuvre avec cartel',
   structure: 'Structure révélée',
+}
+
+export const PAINT_STYLES = {
+  automatic: { label: 'Automatique' },
+  oil: { label: 'Huile expressive', bristles: 13, opacity: 0.94, width: 1.34, backgroundAlpha: 1 },
+  watercolor: { label: 'Aquarelle organique', bristles: 7, opacity: 0.34, width: 1.72, backgroundAlpha: 0.82 },
+  inkwash: { label: 'Encre gestuelle', bristles: 5, opacity: 0.72, width: 0.92, backgroundAlpha: 0.72 },
+  pastel: { label: 'Pastel poudreux', bristles: 9, opacity: 0.58, width: 1.46, backgroundAlpha: 0.92 },
+  fresco: { label: 'Fresque ancienne', bristles: 8, opacity: 0.62, width: 1.2, backgroundAlpha: 0.86 },
 }
 
 const QUALITY_TEXTURE = {
@@ -212,22 +222,86 @@ export function describeHeatmap(analysis, heatmapData, mode = 'painting') {
   }
 }
 
-function fillCanvas(ctx, palette, random) {
+function fillCanvas(ctx, palette, random, paintStyle) {
+  const style = PAINT_STYLES[paintStyle] || PAINT_STYLES.oil
   const gradient = ctx.createRadialGradient(SIZE * 0.44, SIZE * 0.38, SIZE * 0.06, SIZE * 0.5, SIZE * 0.5, SIZE * 0.78)
-  gradient.addColorStop(0, mixColors(palette.background, palette.low, 0.35))
+  gradient.addColorStop(0, mixColors(palette.background, palette.low, paintStyle === 'watercolor' ? 0.52 : 0.35))
   gradient.addColorStop(0.62, palette.background)
   gradient.addColorStop(1, palette.shadow)
   ctx.fillStyle = gradient
   ctx.fillRect(0, 0, SIZE, SIZE)
 
   ctx.save()
-  for (let index = 0; index < 4200; index += 1) {
-    const alpha = 0.008 + random() * 0.028
+  const grainCount = paintStyle === 'fresco' ? 6200 : paintStyle === 'watercolor' ? 2600 : 4200
+  for (let index = 0; index < grainCount; index += 1) {
+    const alpha = (0.006 + random() * 0.028) * style.backgroundAlpha
     ctx.fillStyle = random() > 0.52 ? rgba(palette.ink, alpha) : rgba(palette.shadow, alpha * 1.6)
     const x = random() * SIZE
     const y = random() * SIZE
-    const length = 1 + random() * 9
-    ctx.fillRect(x, y, length, 0.7 + random())
+    const length = paintStyle === 'oil' ? 2 + random() * 16 : 1 + random() * 8
+    ctx.save()
+    ctx.translate(x, y)
+    ctx.rotate((random() - 0.5) * 0.45)
+    ctx.fillRect(0, 0, length, 0.55 + random() * (paintStyle === 'pastel' ? 2.2 : 1.1))
+    ctx.restore()
+  }
+  ctx.restore()
+}
+
+function drawUniverseAtmosphere(ctx, heatmap, palette, theme, random) {
+  const anchors = heatmap.hotspots.slice(0, 7).map((item) => ({ ...squareCenter(item.square), power: clamp(item.intensity / 2.4) }))
+  ctx.save()
+  ctx.lineCap = 'round'
+  if (theme === 'oceanic') {
+    for (let band = 0; band < 18; band += 1) {
+      const y = MARGIN * 0.5 + random() * (SIZE - MARGIN)
+      ctx.strokeStyle = rgba(band % 4 === 0 ? palette.high : palette.medium, 0.025 + random() * 0.065)
+      ctx.lineWidth = 3 + random() * 18
+      ctx.beginPath()
+      ctx.moveTo(-80, y)
+      for (let x = 0; x <= SIZE + 120; x += 120) ctx.quadraticCurveTo(x + 55, y + (random() - 0.5) * 75, x + 120, y + (random() - 0.5) * 30)
+      ctx.stroke()
+    }
+  } else if (theme === 'botanical') {
+    for (const anchor of anchors) {
+      const length = CELL * (0.8 + anchor.power * 1.8)
+      const angle = random() * Math.PI * 2
+      ctx.strokeStyle = rgba(mixColors(palette.low, palette.ink, 0.16), 0.11 + anchor.power * 0.12)
+      ctx.lineWidth = 5 + anchor.power * 15
+      ctx.beginPath()
+      ctx.moveTo(anchor.x, anchor.y)
+      ctx.quadraticCurveTo(anchor.x + Math.cos(angle + 0.6) * length * 0.5, anchor.y + Math.sin(angle + 0.6) * length * 0.5, anchor.x + Math.cos(angle) * length, anchor.y + Math.sin(angle) * length)
+      ctx.stroke()
+    }
+  } else if (theme === 'tempest') {
+    for (const anchor of anchors.slice(0, 5)) {
+      for (let ring = 0; ring < 4; ring += 1) {
+        ctx.strokeStyle = rgba(ring % 2 ? palette.medium : palette.high, 0.035 + anchor.power * 0.07)
+        ctx.lineWidth = 8 + ring * 7
+        ctx.beginPath()
+        ctx.arc(anchor.x, anchor.y, CELL * (0.35 + ring * 0.38), random() * Math.PI, random() * Math.PI + Math.PI * 1.3)
+        ctx.stroke()
+      }
+    }
+  } else if (theme === 'cartography') {
+    ctx.setLineDash([4, 16])
+    for (let index = 1; index < anchors.length; index += 1) {
+      ctx.strokeStyle = rgba(palette.ink, 0.09)
+      ctx.lineWidth = 2 + random() * 3
+      ctx.beginPath()
+      ctx.moveTo(anchors[index - 1].x, anchors[index - 1].y)
+      ctx.quadraticCurveTo(SIZE * random(), SIZE * random(), anchors[index].x, anchors[index].y)
+      ctx.stroke()
+    }
+    ctx.setLineDash([])
+  } else if (theme === 'celestial') {
+    for (let index = 0; index < 240; index += 1) {
+      const radius = random() > 0.92 ? 2.5 + random() * 4 : 0.7 + random() * 1.8
+      ctx.fillStyle = rgba(random() > 0.8 ? palette.critical : palette.ink, 0.08 + random() * 0.26)
+      ctx.beginPath()
+      ctx.arc(random() * SIZE, random() * SIZE, radius, 0, Math.PI * 2)
+      ctx.fill()
+    }
   }
   ctx.restore()
 }
@@ -280,8 +354,9 @@ function backgroundColor(entry, palette) {
   return palette.low
 }
 
-function drawHeatShapes(ctx, heatmap, palette, family, random, density) {
+function drawHeatShapes(ctx, heatmap, palette, family, random, density, paintStyle) {
   const densityFactor = density === 'airy' ? 0.82 : density === 'dense' ? 1.16 : 1
+  const style = PAINT_STYLES[paintStyle] || PAINT_STYLES.oil
   const ordered = [...heatmap.hotspots].sort((a, b) => a.activity - b.activity)
   ctx.save()
   for (const entry of ordered) {
@@ -294,12 +369,17 @@ function drawHeatShapes(ctx, heatmap, palette, family, random, density) {
       const x = center.x + (random() - 0.5) * jitter
       const y = center.y + (random() - 0.5) * jitter
       const color = backgroundColor(entry, palette)
-      ctx.fillStyle = rgba(mixColors(color, palette.ink, layer * 0.05), 0.08 + intensity * 0.34 - layer * 0.045)
-      geometryPath(ctx, family, x, y, radius, random)
-      ctx.fill()
-      if (intensity > 0.55 && layer === 0) {
-        ctx.strokeStyle = rgba(color, 0.18 + intensity * 0.22)
-        ctx.lineWidth = 2 + intensity * 5
+      const baseAlpha = paintStyle === 'watercolor' ? 0.035 + intensity * 0.15 : paintStyle === 'inkwash' ? 0.045 + intensity * 0.2 : 0.075 + intensity * 0.3
+      const repetitions = paintStyle === 'oil' ? 3 : paintStyle === 'pastel' ? 4 : 1
+      for (let pass = 0; pass < repetitions; pass += 1) {
+        const passRadius = radius * (0.92 + random() * 0.15)
+        ctx.fillStyle = rgba(mixColors(color, palette.ink, layer * 0.05 + pass * 0.012), (baseAlpha - layer * 0.03) * style.backgroundAlpha)
+        geometryPath(ctx, family, x + (random() - 0.5) * 9, y + (random() - 0.5) * 9, passRadius, random)
+        ctx.fill()
+      }
+      if (intensity > 0.55 && layer === 0 && paintStyle !== 'watercolor') {
+        ctx.strokeStyle = rgba(color, (paintStyle === 'inkwash' ? 0.11 : 0.16) + intensity * 0.18)
+        ctx.lineWidth = paintStyle === 'pastel' ? 9 + intensity * 8 : 2 + intensity * 5
         ctx.stroke()
       }
     }
@@ -330,11 +410,20 @@ function strokePath(ctx, curve) {
   ctx.bezierCurveTo(curve.c1.x, curve.c1.y, curve.c2.x, curve.c2.y, curve.end.x, curve.end.y)
 }
 
-function paintStroke(ctx, row, palette, random, density) {
+function pointOnCurve(curve, t) {
+  const mt = 1 - t
+  return {
+    x: mt ** 3 * curve.start.x + 3 * mt ** 2 * t * curve.c1.x + 3 * mt * t ** 2 * curve.c2.x + t ** 3 * curve.end.x,
+    y: mt ** 3 * curve.start.y + 3 * mt ** 2 * t * curve.c1.y + 3 * mt * t ** 2 * curve.c2.y + t ** 3 * curve.end.y,
+  }
+}
+
+function paintStroke(ctx, row, palette, random, density, paintStyle) {
   const texture = QUALITY_TEXTURE[row.quality] || QUALITY_TEXTURE.good
+  const style = PAINT_STYLES[paintStyle] || PAINT_STYLES.oil
   const importance = clamp((row.importance || 20) / 100)
   const densityFactor = density === 'airy' ? 0.82 : density === 'dense' ? 1.14 : 1
-  const baseWidth = (9 + importance * 45) * texture.width * densityFactor
+  const baseWidth = (9 + importance * 45) * texture.width * densityFactor * style.width
   const sideColor = row.color === 'w' ? palette.white : palette.black
   const color = row.motifs.includes('mat') ? palette.critical
     : row.motifs.includes('échec') ? mixColors(sideColor, palette.critical, 0.42)
@@ -346,26 +435,64 @@ function paintStroke(ctx, row, palette, random, density) {
   ctx.save()
   ctx.lineCap = 'round'
   ctx.lineJoin = 'round'
-  ctx.globalCompositeOperation = importance > 0.65 ? 'source-over' : 'screen'
+  ctx.globalCompositeOperation = paintStyle === 'watercolor' ? 'screen' : paintStyle === 'inkwash' ? 'multiply' : 'source-over'
 
-  ctx.shadowColor = rgba(color, 0.2 + importance * 0.28)
-  ctx.shadowBlur = 4 + importance * 17
-  ctx.strokeStyle = rgba(mixColors(color, palette.shadow, 0.22), texture.alpha * (0.25 + importance * 0.42))
-  ctx.lineWidth = baseWidth * 1.18
+  if (paintStyle === 'watercolor') {
+    ctx.strokeStyle = rgba(mixColors(color, palette.ink, 0.1), 0.045 + importance * 0.11)
+    ctx.lineWidth = baseWidth * 2.15
+  } else if (paintStyle === 'inkwash') {
+    ctx.strokeStyle = rgba(mixColors(color, palette.shadow, 0.48), 0.18 + importance * 0.34)
+    ctx.lineWidth = baseWidth * 1.08
+  } else {
+    ctx.strokeStyle = rgba(mixColors(color, palette.shadow, paintStyle === 'fresco' ? 0.32 : 0.18), style.opacity * texture.alpha * (0.22 + importance * 0.44))
+    ctx.lineWidth = baseWidth * 1.16
+  }
   strokePath(ctx, curve)
   ctx.stroke()
 
-  const bristles = density === 'airy' ? 4 : density === 'dense' ? 9 : 7
-  ctx.shadowBlur = 0
+  const bristles = Math.round(style.bristles * (density === 'airy' ? 0.7 : density === 'dense' ? 1.25 : 1))
   for (let index = 0; index < bristles; index += 1) {
     const offset = (index - (bristles - 1) / 2) * baseWidth / bristles + (random() - 0.5) * baseWidth * texture.jitter
     ctx.save()
-    ctx.translate(offset * 0.16, offset * 0.08)
-    ctx.strokeStyle = rgba(mixColors(color, index % 3 === 0 ? palette.ink : palette.shadow, index % 3 === 0 ? 0.16 : 0.08), texture.alpha * (0.18 + importance * 0.5) * (0.7 + random() * 0.3))
-    ctx.lineWidth = Math.max(1.5, baseWidth / bristles * (0.62 + random() * 0.7))
+    ctx.translate(offset * (0.11 + random() * 0.08), offset * (0.04 + random() * 0.09))
+    const pigment = index % 4 === 0 ? mixColors(color, palette.ink, paintStyle === 'oil' ? 0.2 : 0.08) : index % 5 === 0 ? mixColors(color, palette.shadow, 0.24) : color
+    const alpha = paintStyle === 'watercolor'
+      ? 0.035 + importance * 0.095 + random() * 0.045
+      : style.opacity * texture.alpha * (0.12 + importance * 0.42) * (0.55 + random() * 0.45)
+    ctx.strokeStyle = rgba(pigment, alpha)
+    ctx.lineWidth = Math.max(1.2, baseWidth / bristles * (0.46 + random() * (paintStyle === 'oil' ? 1.35 : 0.9)))
     strokePath(ctx, curve)
     ctx.stroke()
     ctx.restore()
+  }
+
+  if (paintStyle === 'oil' || paintStyle === 'pastel' || paintStyle === 'fresco') {
+    const deposits = Math.round((paintStyle === 'pastel' ? 58 : 28) * (0.45 + importance))
+    for (let index = 0; index < deposits; index += 1) {
+      const point = pointOnCurve(curve, random())
+      const spread = baseWidth * (paintStyle === 'pastel' ? 0.65 : 0.38)
+      const x = point.x + (random() - 0.5) * spread
+      const y = point.y + (random() - 0.5) * spread
+      ctx.fillStyle = rgba(index % 5 === 0 ? mixColors(color, palette.ink, 0.2) : color, paintStyle === 'pastel' ? 0.035 + random() * 0.09 : 0.08 + random() * 0.18)
+      ctx.beginPath()
+      ctx.ellipse(x, y, 0.8 + random() * (paintStyle === 'oil' ? 5 : 3), 0.5 + random() * 2, random() * Math.PI, 0, Math.PI * 2)
+      ctx.fill()
+    }
+  }
+
+  if (paintStyle === 'watercolor') {
+    for (let index = 0; index < 6; index += 1) {
+      const point = pointOnCurve(curve, 0.08 + random() * 0.84)
+      const bloom = baseWidth * (0.35 + random() * 0.55)
+      const wash = ctx.createRadialGradient(point.x, point.y, 0, point.x, point.y, bloom)
+      wash.addColorStop(0, rgba(color, 0.035 + importance * 0.05))
+      wash.addColorStop(0.78, rgba(color, 0.016))
+      wash.addColorStop(1, rgba(color, 0))
+      ctx.fillStyle = wash
+      ctx.beginPath()
+      ctx.arc(point.x, point.y, bloom, 0, Math.PI * 2)
+      ctx.fill()
+    }
   }
 
   ctx.globalCompositeOperation = 'source-over'
@@ -375,13 +502,13 @@ function paintStroke(ctx, row, palette, random, density) {
       const angle = random() * Math.PI * 2
       const radius = baseWidth * (0.35 + random() * 1.35)
       const dot = 2 + random() * baseWidth * 0.17
-      ctx.fillStyle = rgba(row.motifs.includes('mat') ? palette.critical : color, 0.24 + random() * 0.42)
+      ctx.fillStyle = rgba(row.motifs.includes('mat') ? palette.critical : color, (paintStyle === 'watercolor' ? 0.08 : 0.18) + random() * (paintStyle === 'pastel' ? 0.24 : 0.4))
       ctx.beginPath()
       ctx.arc(curve.end.x + Math.cos(angle) * radius, curve.end.y + Math.sin(angle) * radius, dot, 0, Math.PI * 2)
       ctx.fill()
     }
   }
-  if (row.quality === 'blunder') {
+  if (row.quality === 'blunder' && paintStyle !== 'watercolor') {
     ctx.strokeStyle = rgba(palette.shadow, 0.55)
     ctx.lineWidth = Math.max(3, baseWidth * 0.1)
     ctx.beginPath()
@@ -421,6 +548,55 @@ function drawSymbolGlyph(ctx, piece, theme, x, y, size, color) {
     ctx.arc(0, 0, size * 0.13, 0, Math.PI * 2)
     ctx.fillStyle = rgba(color, 0.72)
     ctx.fill()
+  } else if (theme === 'oceanic') {
+    const crests = piece.type === 'q' ? 4 : piece.type === 'k' ? 3 : 2
+    for (let crest = 0; crest < crests; crest += 1) {
+      const y = (crest - (crests - 1) / 2) * size * 0.16
+      ctx.beginPath()
+      ctx.moveTo(-size * 0.48, y)
+      ctx.bezierCurveTo(-size * 0.2, y - size * 0.32, size * 0.04, y + size * 0.25, size * 0.48, y - size * 0.05)
+      ctx.stroke()
+    }
+    ctx.beginPath()
+    ctx.arc(0, 0, size * 0.12, 0, Math.PI * 2)
+    ctx.fill()
+  } else if (theme === 'botanical') {
+    const petals = piece.type === 'q' ? 9 : piece.type === 'k' ? 7 : piece.type === 'p' ? 3 : 5
+    for (let petal = 0; petal < petals; petal += 1) {
+      ctx.save()
+      ctx.rotate(petal * Math.PI * 2 / petals)
+      ctx.beginPath()
+      ctx.ellipse(0, -size * 0.27, size * 0.13, size * 0.28, 0, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.stroke()
+      ctx.restore()
+    }
+    ctx.beginPath()
+    ctx.arc(0, 0, size * 0.14, 0, Math.PI * 2)
+    ctx.fillStyle = rgba(color, 0.64)
+    ctx.fill()
+  } else if (theme === 'tempest') {
+    const bolts = piece.type === 'q' ? 4 : piece.type === 'k' ? 3 : 2
+    for (let bolt = 0; bolt < bolts; bolt += 1) {
+      const offset = (bolt - (bolts - 1) / 2) * size * 0.18
+      ctx.beginPath()
+      ctx.moveTo(offset - size * 0.12, -size * 0.48)
+      ctx.lineTo(offset + size * 0.08, -size * 0.08)
+      ctx.lineTo(offset - size * 0.02, -size * 0.08)
+      ctx.lineTo(offset + size * 0.14, size * 0.48)
+      ctx.stroke()
+    }
+  } else if (theme === 'cartography') {
+    const rings = piece.type === 'q' ? 4 : piece.type === 'k' ? 3 : 2
+    for (let ring = 1; ring <= rings; ring += 1) {
+      ctx.beginPath()
+      ctx.ellipse(0, 0, size * 0.12 * ring, size * 0.08 * ring, ring * 0.24, 0, Math.PI * 2)
+      ctx.stroke()
+    }
+    ctx.beginPath()
+    ctx.moveTo(-size * 0.48, size * 0.32)
+    ctx.quadraticCurveTo(0, -size * 0.3, size * 0.48, size * 0.12)
+    ctx.stroke()
   } else {
     const sides = piece.type === 'p' ? 1 : piece.type === 'n' ? 3 : piece.type === 'b' ? 4 : piece.type === 'r' ? 6 : piece.type === 'q' ? 8 : 10
     if (sides === 1) {
@@ -488,20 +664,59 @@ function placeSymbols(analysis, palette, theme, level, random) {
   })
 }
 
-function drawSymbols(ctx, placements, palette) {
+function drawSymbols(ctx, placements, palette, paintStyle) {
   for (const placement of placements.slice().reverse()) {
     const { piece, x, y, size, color, theme } = placement
     ctx.save()
-    ctx.shadowColor = rgba(palette.shadow, 0.55)
-    ctx.shadowBlur = 16
-    ctx.beginPath()
-    ctx.arc(x, y, size * 0.54, 0, Math.PI * 2)
-    ctx.fillStyle = rgba(palette.background, 0.44)
-    ctx.fill()
-    ctx.shadowBlur = 0
+    if (paintStyle !== 'watercolor') {
+      ctx.beginPath()
+      ctx.arc(x, y, size * 0.54, 0, Math.PI * 2)
+      ctx.fillStyle = rgba(palette.background, paintStyle === 'inkwash' ? 0.22 : 0.34)
+      ctx.fill()
+    }
     drawSymbolGlyph(ctx, piece, theme, x, y, size, color)
     ctx.restore()
   }
+}
+
+function drawFinishingTexture(ctx, palette, paintStyle, random) {
+  ctx.save()
+  ctx.globalCompositeOperation = paintStyle === 'inkwash' ? 'multiply' : 'source-over'
+  const marks = paintStyle === 'pastel' ? 4600 : paintStyle === 'fresco' ? 3400 : paintStyle === 'oil' ? 2300 : 1300
+  for (let index = 0; index < marks; index += 1) {
+    const x = random() * SIZE
+    const y = random() * SIZE
+    if (paintStyle === 'fresco' && random() > 0.965) {
+      ctx.strokeStyle = rgba(palette.shadow, 0.09 + random() * 0.1)
+      ctx.lineWidth = 0.5 + random() * 1.8
+      ctx.beginPath()
+      ctx.moveTo(x, y)
+      for (let crack = 0; crack < 4; crack += 1) ctx.lineTo(x + (random() - 0.5) * 80, y + crack * (8 + random() * 16))
+      ctx.stroke()
+    } else if (paintStyle === 'oil') {
+      ctx.fillStyle = rgba(random() > 0.6 ? palette.ink : palette.shadow, 0.006 + random() * 0.018)
+      ctx.save()
+      ctx.translate(x, y)
+      ctx.rotate(random() * Math.PI)
+      ctx.fillRect(0, 0, 4 + random() * 22, 0.8 + random() * 2.5)
+      ctx.restore()
+    } else {
+      const radius = paintStyle === 'pastel' ? 0.6 + random() * 2.2 : 0.4 + random() * 1.2
+      ctx.fillStyle = rgba(random() > 0.58 ? palette.ink : palette.shadow, paintStyle === 'pastel' ? 0.012 + random() * 0.035 : 0.008 + random() * 0.02)
+      ctx.beginPath()
+      ctx.arc(x, y, radius, 0, Math.PI * 2)
+      ctx.fill()
+    }
+  }
+  if (paintStyle === 'fresco') {
+    const veil = ctx.createLinearGradient(0, 0, SIZE, SIZE)
+    veil.addColorStop(0, rgba('#d9c99d', 0.035))
+    veil.addColorStop(0.5, rgba('#8c6f54', 0.025))
+    veil.addColorStop(1, rgba('#ead9ae', 0.045))
+    ctx.fillStyle = veil
+    ctx.fillRect(0, 0, SIZE, SIZE)
+  }
+  ctx.restore()
 }
 
 function drawStructureOverlay(ctx, heatmap, palette) {
@@ -568,19 +783,28 @@ function resolveFamily(requested, seed) {
   return ['organic', 'circles', 'triangles', 'diamonds'][seed % 4]
 }
 
+function resolvePaintStyle(requested, analysis, seed) {
+  if (requested && requested !== 'automatic' && PAINT_STYLES[requested]) return requested
+  if (['king-storm', 'sacrifice', 'chaos', 'counterstroke'].includes(analysis.theme?.id)) return seed % 2 ? 'oil' : 'inkwash'
+  return ['oil', 'watercolor', 'pastel', 'fresco'][seed % 4]
+}
+
 function resolveTheme(requested, analysis, seed) {
   if (requested && requested !== 'automatic') return requested
-  if (['king-storm', 'promotion', 'counterstroke'].includes(analysis.theme?.id)) return 'celestial'
-  return seed % 3 === 0 ? 'celestial' : 'abstract'
+  if (analysis.theme?.id === 'king-storm') return 'tempest'
+  if (analysis.theme?.id === 'promotion') return 'celestial'
+  if (analysis.theme?.id === 'center-clash') return 'cartography'
+  return ['abstract', 'celestial', 'oceanic', 'botanical', 'tempest', 'cartography'][seed % 6]
 }
 
 export function renderPainting(canvas, analysis, sourcePgn, options = {}) {
   const mode = options.mode || 'painting'
   const variation = Number(options.variation || 0)
-  const seed = hashText(`${sourcePgn}|paint-first-1.3|${variation}`)
+  const seed = hashText(`${sourcePgn}|paint-first-1.4|${variation}`)
   const random = randomGenerator(seed)
   const palette = choosePalette(analysis, options.palette || 'automatic', seed)
   const family = resolveFamily(options.backgroundShape || 'automatic', seed)
+  const paintStyle = resolvePaintStyle(options.paintStyle || 'automatic', analysis, seed)
   const symbolTheme = resolveTheme(options.symbolTheme || 'automatic', analysis, seed)
   const density = options.density || 'balanced'
   const symbolLevel = options.symbolLevel || 'primary'
@@ -591,25 +815,72 @@ export function renderPainting(canvas, analysis, sourcePgn, options = {}) {
   canvas.height = SIZE
   const ctx = canvas.getContext('2d')
   ctx.clearRect(0, 0, SIZE, SIZE)
-  fillCanvas(ctx, palette, random)
-  drawHeatShapes(ctx, heatmapData, palette, family, random, density)
+  fillCanvas(ctx, palette, random, paintStyle)
+  drawUniverseAtmosphere(ctx, heatmapData, palette, symbolTheme, random)
+  drawHeatShapes(ctx, heatmapData, palette, family, random, density, paintStyle)
 
   const strokes = [...analysis.rows].sort((a, b) => {
     const layerA = a.motifs.includes('mat') ? 1000 : a.importance || 0
     const layerB = b.motifs.includes('mat') ? 1000 : b.importance || 0
     return layerA - layerB || a.index - b.index
   })
-  for (const row of strokes) paintStroke(ctx, row, palette, random, density)
+  for (const row of strokes) paintStroke(ctx, row, palette, random, density, paintStyle)
 
   const placements = placeSymbols(analysis, palette, symbolTheme, symbolLevel, random)
-  drawSymbols(ctx, placements, palette)
+  drawSymbols(ctx, placements, palette, paintStyle)
+  drawFinishingTexture(ctx, palette, paintStyle, random)
   if (mode === 'structure') drawStructureOverlay(ctx, heatmapData, palette)
-  drawFrameAndCaption(ctx, analysis, description, palette, placements)
+  if (mode === 'caption' || mode === 'structure') drawFrameAndCaption(ctx, analysis, description, palette, placements)
 
   return {
-    heatmapData, description, palette, family, symbolTheme, placements, variation,
+    heatmapData, description, palette, family, paintStyle, paintStyleLabel: PAINT_STYLES[paintStyle].label, symbolTheme, placements, variation,
     strokeOrder: strokes.map((row) => row.index),
   }
+}
+
+export function createPreservationMask(analysis, sourcePgn, options = {}) {
+  const canvas = document.createElement('canvas')
+  canvas.width = SIZE
+  canvas.height = SIZE
+  const ctx = canvas.getContext('2d')
+  ctx.fillStyle = '#000000'
+  ctx.fillRect(0, 0, SIZE, SIZE)
+  const variation = Number(options.variation || 0)
+  const seed = hashText(`${sourcePgn}|paint-first-1.4|${variation}`)
+  const random = randomGenerator(seed)
+  const heatmap = buildHeatmapData(analysis)
+
+  for (const hotspot of heatmap.hotspots.slice(0, 8)) {
+    const center = squareCenter(hotspot.square)
+    const radius = CELL * (0.22 + clamp(hotspot.intensity / 2.4) * 0.52)
+    const gradient = ctx.createRadialGradient(center.x, center.y, 0, center.x, center.y, radius)
+    gradient.addColorStop(0, `rgba(255,255,255,${0.38 + clamp(hotspot.intensity / 2.4) * 0.42})`)
+    gradient.addColorStop(1, 'rgba(255,255,255,0)')
+    ctx.fillStyle = gradient
+    ctx.beginPath()
+    ctx.arc(center.x, center.y, radius, 0, Math.PI * 2)
+    ctx.fill()
+  }
+
+  const important = [...analysis.rows].filter((row) => (row.importance || 0) >= 45 || row.captured || row.motifs.includes('échec') || row.motifs.includes('mat'))
+  ctx.lineCap = 'round'
+  ctx.lineJoin = 'round'
+  for (const row of important) {
+    const importance = clamp((row.importance || 35) / 100)
+    ctx.strokeStyle = `rgba(255,255,255,${0.36 + importance * 0.62})`
+    ctx.lineWidth = 28 + importance * 72
+    strokePath(ctx, curveForMove(row, random))
+    ctx.stroke()
+  }
+
+  for (const piece of (analysis.pieces || []).slice(0, options.symbolLevel === 'extended' ? 7 : 4)) {
+    const center = squareCenter(piece.finalSquare)
+    ctx.fillStyle = `rgba(255,255,255,${piece.wasCaptured ? 0.52 : 0.86})`
+    ctx.beginPath()
+    ctx.arc(center.x, center.y, CELL * 0.34, 0, Math.PI * 2)
+    ctx.fill()
+  }
+  return canvas
 }
 
 export function downloadPainting(canvas, filename = 'chess-paint.png') {
